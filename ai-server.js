@@ -31,7 +31,9 @@ const OLLAMA_URL = String(
   process.env.OLLAMA_URL || "http://127.0.0.1:11434"
 ).replace(/\/+$/, "");
 
-const CHAT_MODEL = process.env.VEDGPT_MODEL || "vedgpt";
+const OLLAMA_API_KEY = "80f287c811cd49a5838107a6ee4ba810._XNuqm5OZsndHyEUy4MvVf6j";
+
+const CHAT_MODEL = process.env.VEDGPT_MODEL || "gpt-oss:120b";
 const FILE_MODEL = process.env.VEDGPT_FILE_MODEL || CHAT_MODEL;
 const VISION_MODEL = process.env.VEDGPT_VISION_MODEL || "qwen3-vl:8b";
 
@@ -62,7 +64,6 @@ ANSWER STYLE
 HELPFULNESS
 - Complete ordinary and benign requests directly instead of refusing, lecturing, or asking unnecessary questions.
 - Resolve minor ambiguity using the most reasonable interpretation.
-- If a request is clearly dangerous, illegal, or harmful, refuse only the unsafe part and offer a safe alternative.
 - Never claim current live knowledge unless the user supplied it or a live tool is connected.
 - Never invent facts.`;
 
@@ -260,8 +261,9 @@ async function callOllama({
     const response = await fetch(`${OLLAMA_URL}/api/chat`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
-      },
+  "Content-Type": "application/json",
+  "Authorization": `Bearer ${OLLAMA_API_KEY}`
+},
       body: JSON.stringify(payload),
       signal: controller.signal
     });
@@ -509,7 +511,11 @@ async function handleHealth(response) {
 
   try {
     const ollamaResponse = await fetch(`${OLLAMA_URL}/api/tags`, {
-      signal: controller.signal
+  headers: {
+    "Authorization": `Bearer ${OLLAMA_API_KEY}`
+  },
+  signal: controller.signal
+});
     });
 
     const data = ollamaResponse.ok
@@ -600,7 +606,7 @@ server.headersTimeout = AI_TIMEOUT_MS + 20_000;
 
 server.listen(PORT, HOST, () => {
   console.log("");
-  console.log("VedGPT local AI server is running.");
+  console.log("VedGPT Cloud local AI server is running.");
   console.log(`Open: http://${HOST === "0.0.0.0" ? "localhost" : HOST}:${PORT}`);
   console.log(`Chat model: ${CHAT_MODEL}`);
   console.log(`File model: ${FILE_MODEL}`);
