@@ -25,7 +25,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { URL } = require("node:url");
 
-const HOST = process.env.HOST || "127.0.0.1";
+const HOST = process.env.HOST || "0.0.0.0";  
 const PORT = Number(process.env.PORT || 3000);
 const OLLAMA_URL = String(
   process.env.OLLAMA_URL || "http://127.0.0.1:11434"
