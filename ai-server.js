@@ -230,7 +230,6 @@ function stripCodeFence(content) {
 
   return match ? match[1] : text;
 }
-
 async function callOllama({
   model,
   messages,
@@ -242,6 +241,21 @@ async function callOllama({
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
 
+  if (
+    OLLAMA_URL.includes("ollama.com") &&
+    !OLLAMA_API_KEY
+  ) {
+    clearTimeout(timer);
+
+    throw Object.assign(
+      new Error("OLLAMA_API_KEY is missing."),
+      {
+        statusCode: 500,
+        code: "OLLAMA_API_KEY_MISSING"
+      }
+    );
+  }
+
   const payload = {
     model,
     messages,
@@ -250,7 +264,7 @@ async function callOllama({
     options: {
       temperature,
       top_p: 0.9,
-      num_ctx: 65_536,
+      num_ctx: 65536,
       num_predict: maxTokens
     },
     ...(format ? { format } : {}),
@@ -261,14 +275,15 @@ async function callOllama({
     const response = await fetch(`${OLLAMA_URL}/api/chat`, {
       method: "POST",
       headers: {
-  "Content-Type": "application/json",
-  "Authorization": `Bearer ${OLLAMA_API_KEY}`
-},
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${OLLAMA_API_KEY}`
+      },
       body: JSON.stringify(payload),
       signal: controller.signal
     });
 
     const text = await response.text();
+
     let data = null;
 
     try {
@@ -278,13 +293,22 @@ async function callOllama({
     }
 
     if (!response.ok) {
-      const detail = data?.error || text || `Ollama returned HTTP ${response.status}.`;
+      const detail =
+        data?.error ||
+        text ||
+        `Ollama returned HTTP ${response.status}.`;
+
       const error = new Error(detail);
-      error.statusCode = response.status === 404 ? 503 : response.status;
+
+      error.statusCode =
+        response.status === 404 ? 503 : response.status;
+
       error.code =
-        response.status === 404 || /model.*not found|pull model/i.test(detail)
+        response.status === 404 ||
+        /model.*not found|pull model/i.test(detail)
           ? "MODEL_NOT_FOUND"
           : "OLLAMA_ERROR";
+
       throw error;
     }
 
@@ -306,7 +330,7 @@ async function callOllama({
       )
     ) {
       throw Object.assign(
-        new Error("Ollama is not running or cannot be reached."),
+        new Error("Ollama cannot be reached."),
         {
           statusCode: 503,
           code: "OLLAMA_OFFLINE"
@@ -319,7 +343,6 @@ async function callOllama({
     clearTimeout(timer);
   }
 }
-
 async function handleChat(request, response) {
   const body = await readJsonBody(request);
 
