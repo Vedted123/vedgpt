@@ -25,18 +25,24 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { URL } = require("node:url");
 
-const HOST = process.env.HOST || "0.0.0.0";  
+const HOST = process.env.HOST || "0.0.0.0";
 const PORT = Number(process.env.PORT || 3000);
+
 const OLLAMA_URL = String(
-  process.env.OLLAMA_URL || "http://127.0.0.1:11434"
+  process.env.OLLAMA_URL || "https://ollama.com"
 ).replace(/\/+$/, "");
 
-const OLLAMA_API_KEY = "80f287c811cd49a5838107a6ee4ba810._XNuqm5OZsndHyEUy4MvVf6j";
+const OLLAMA_API_KEY =
+  process.env.OLLAMA_API_KEY || "80f287c811cd49a5838107a6ee4ba810._XNuqm5OZsndHyEUy4MvVf6j";
 
-const CHAT_MODEL = process.env.VEDGPT_MODEL || "gpt-oss:120b";
-const FILE_MODEL = process.env.VEDGPT_FILE_MODEL || CHAT_MODEL;
-const VISION_MODEL = process.env.VEDGPT_VISION_MODEL || "qwen3-vl:8b";
+const CHAT_MODEL =
+  process.env.VEDGPT_MODEL || "gpt-oss:120b";
 
+const FILE_MODEL =
+  process.env.VEDGPT_FILE_MODEL || CHAT_MODEL;
+
+const VISION_MODEL =
+  process.env.VEDGPT_VISION_MODEL || "qwen3-vl:8b";
 const AI_TIMEOUT_MS = 120_000;
 const MAX_BODY_BYTES = 14 * 1024 * 1024;
 const MAX_FILE_BYTES = 1_500_000;
