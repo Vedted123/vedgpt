@@ -539,6 +539,50 @@ async function handleHealth(response) {
   const timer = setTimeout(() => controller.abort(), 5000);
 
   try {
+    const ollamaResponse = await fetch(
+      `${OLLAMA_URL}/api/tags`,
+      {
+        headers: {
+          Authorization: `Bearer ${OLLAMA_API_KEY}`
+        },
+        signal: controller.signal
+      }
+    );
+
+    const data = ollamaResponse.ok
+      ? await ollamaResponse.json()
+      : { models: [] };
+
+    const installed = Array.isArray(data?.models)
+      ? data.models.map(
+          (entry) => entry.name || entry.model
+        )
+      : [];
+
+    sendJson(response, 200, {
+      ok: ollamaResponse.ok,
+      ollamaUrl: OLLAMA_URL,
+      chatModel: CHAT_MODEL,
+      fileModel: FILE_MODEL,
+      visionModel: VISION_MODEL,
+      installedModels: installed
+    });
+  } catch (error) {
+    sendJson(response, 503, {
+      ok: false,
+      code: "OLLAMA_OFFLINE",
+      error:
+        error?.message ||
+        "Ollama Cloud could not be reached."
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}async function handleHealth(response) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+
+  try {
     const ollamaResponse = await fetch(`${OLLAMA_URL}/api/tags`, {
   headers: {
     "Authorization": `Bearer ${OLLAMA_API_KEY}`
