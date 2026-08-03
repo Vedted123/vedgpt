@@ -1,0 +1,4440 @@
+<!DOCTYPE html>
+<!--
+  REQUIRED REALTIME DATABASE RULES FOR THIS APP:
+
+  {
+    "rules": {
+      "users": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      }
+    }
+  }
+
+  This standalone build can be opened directly by double-clicking the HTML file.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#eef8ff" />
+  <meta name="description" content="VedGPT — a standalone Chrome built-in AI assistant with local accounts, saved chats, image input, personalities, and downloadable code files." />
+  <title>VedGPT Standalone</title>
+
+  <style>
+    :root {
+      --bg: #f7fbff;
+      --panel: rgba(255, 255, 255, 0.94);
+      --panel-soft: #edf8ff;
+      --panel-hover: #e3f3ff;
+      --primary: #1684e8;
+      --primary-dark: #0867c5;
+      --primary-light: #6bc1ff;
+      --text: #15324b;
+      --muted: #688297;
+      --border: #d6eaf7;
+      --danger: #d94f5c;
+      --success: #219968;
+      --warning: #c9861d;
+      --shadow: 0 20px 60px rgba(34, 105, 157, 0.15);
+      --sidebar-width: 292px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% 5%, rgba(111, 198, 255, 0.2), transparent 27%),
+        radial-gradient(circle at 92% 0%, rgba(30, 137, 226, 0.12), transparent 25%),
+        var(--bg);
+    }
+
+    body {
+      overflow: hidden;
+    }
+
+    button,
+    textarea,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+    }
+
+    button,
+    [role="button"] {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Logo */
+    .logo {
+      position: relative;
+      width: 48px;
+      height: 48px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+    }
+
+    .logo .ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid transparent;
+    }
+
+    .logo .ring.r1 {
+      inset: 1px;
+      border-top-color: #8fd5ff;
+      border-left-color: #8fd5ff;
+      transform: rotate(-27deg);
+    }
+
+    .logo .ring.r2 {
+      inset: 7px;
+      border-right-color: #45a9f3;
+      border-bottom-color: #45a9f3;
+      transform: rotate(18deg);
+    }
+
+    .logo .ring.r3 {
+      inset: 13px;
+      border-top-color: #086fce;
+      border-right-color: #086fce;
+      transform: rotate(50deg);
+    }
+
+    .logo .dot {
+      position: absolute;
+      border-radius: 50%;
+      box-shadow: 0 2px 7px rgba(19, 105, 176, 0.24);
+    }
+
+    .logo .dot.d1 {
+      width: 8px;
+      height: 8px;
+      top: 2px;
+      right: 8px;
+      background: #8fd5ff;
+    }
+
+    .logo .dot.d2 {
+      width: 9px;
+      height: 9px;
+      right: 0;
+      bottom: 7px;
+      background: #45a9f3;
+    }
+
+    .logo .dot.d3 {
+      width: 10px;
+      height: 10px;
+      left: 9px;
+      bottom: 0;
+      background: #086fce;
+    }
+
+    .logo .letter {
+      position: relative;
+      z-index: 2;
+      color: #086dcc;
+      font-size: 25px;
+      font-weight: 950;
+      line-height: 1;
+      letter-spacing: -3px;
+      transform: translateX(-1px);
+      text-shadow: 0 3px 10px rgba(14, 104, 187, 0.17);
+    }
+
+    /* Authentication */
+    .auth-screen {
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+      display: grid;
+      grid-template-columns: minmax(340px, 0.96fr) minmax(430px, 1.04fr);
+    }
+
+    .auth-hero {
+      min-height: 100vh;
+      padding: clamp(42px, 7vw, 94px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border-right: 1px solid var(--border);
+      background:
+        linear-gradient(145deg, rgba(229, 247, 255, 0.88), rgba(250, 253, 255, 0.6)),
+        radial-gradient(circle at 20% 20%, rgba(94, 189, 255, 0.2), transparent 32%);
+    }
+
+    .auth-brand {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 46px;
+    }
+
+    .auth-brand .logo {
+      width: 62px;
+      height: 62px;
+      transform: scale(1.14);
+    }
+
+    .auth-brand strong {
+      display: block;
+      font-size: 27px;
+      letter-spacing: -0.8px;
+    }
+
+    .auth-brand span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .auth-hero h1 {
+      max-width: 650px;
+      margin: 0;
+      color: #0c3b5d;
+      font-size: clamp(40px, 5.2vw, 70px);
+      line-height: 1;
+      letter-spacing: -2.8px;
+    }
+
+    .auth-hero > p {
+      max-width: 600px;
+      margin: 22px 0 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.72;
+    }
+
+    .feature-grid {
+      margin-top: 34px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .feature-card {
+      min-height: 76px;
+      padding: 13px;
+      border: 1px solid rgba(190, 221, 242, 0.94);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.66);
+    }
+
+    .feature-card strong {
+      font-size: 12.5px;
+    }
+
+    .feature-card span {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 10.5px;
+      line-height: 1.4;
+    }
+
+    .auth-side {
+      min-height: 100vh;
+      padding: 28px;
+      display: grid;
+      place-items: center;
+    }
+
+    .auth-card {
+      width: min(440px, 100%);
+      padding: 29px;
+      border: 1px solid var(--border);
+      border-radius: 25px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(22px);
+    }
+
+    .auth-card h2 {
+      margin: 0;
+      font-size: 26px;
+      letter-spacing: -0.7px;
+    }
+
+    .auth-card > p {
+      margin: 8px 0 21px;
+      color: var(--muted);
+      font-size: 13.5px;
+      line-height: 1.55;
+    }
+
+    .auth-tabs {
+      margin-bottom: 20px;
+      padding: 5px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+      border-radius: 13px;
+      background: var(--panel-soft);
+    }
+
+    .auth-tab {
+      min-height: 39px;
+      border-radius: 9px;
+      color: var(--muted);
+      background: transparent;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .auth-tab.active {
+      color: var(--primary-dark);
+      background: #fff;
+      box-shadow: 0 5px 14px rgba(39, 106, 153, 0.09);
+    }
+
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+    }
+
+    .field label {
+      display: block;
+      margin: 0 0 6px 2px;
+      color: #41647e;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .field input {
+      width: 100%;
+      height: 47px;
+      padding: 0 14px;
+      border: 1px solid #cee5f4;
+      border-radius: 13px;
+      outline: none;
+      color: var(--text);
+      background: #fbfdff;
+      transition: border-color 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .field input:focus {
+      border-color: #83c4ef;
+      box-shadow: 0 0 0 3px rgba(41, 145, 225, 0.09);
+    }
+
+    .primary-auth {
+      width: 100%;
+      min-height: 48px;
+      margin-top: 2px;
+      border-radius: 13px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary), #3ca8f3);
+      box-shadow: 0 10px 24px rgba(22, 132, 232, 0.2);
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .primary-auth:disabled {
+      opacity: 0.55;
+      cursor: wait;
+    }
+
+    .auth-message {
+      min-height: 19px;
+      margin-top: 13px;
+      color: var(--danger);
+      font-size: 12px;
+      line-height: 1.45;
+      text-align: center;
+    }
+
+    .auth-message.success {
+      color: var(--success);
+    }
+
+    .auth-note {
+      margin: 12px 0 0;
+      color: #8a9fad;
+      font-size: 10.5px;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    /* App */
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+    }
+
+    .sidebar {
+      height: 100vh;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      z-index: 20;
+      border-right: 1px solid var(--border);
+      background: rgba(245, 251, 255, 0.93);
+      backdrop-filter: blur(20px);
+    }
+
+    .brand {
+      padding: 8px 6px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-copy strong {
+      display: block;
+      font-size: 19px;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-copy span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .new-chat {
+      min-height: 48px;
+      width: 100%;
+      padding: 0 15px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary), #3ca8f3);
+      box-shadow: 0 10px 24px rgba(22, 132, 232, 0.22);
+      cursor: pointer;
+      font-weight: 800;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .new-chat:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 13px 28px rgba(22, 132, 232, 0.28);
+    }
+
+    .section-label {
+      padding: 3px 8px 0;
+      color: #8296a7;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+    }
+
+    .conversation-list {
+      min-height: 0;
+      overflow-y: auto;
+      padding: 1px 0 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      scrollbar-width: thin;
+      scrollbar-color: #c7dfef transparent;
+    }
+
+    .conversation-item {
+      padding: 4px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 5px;
+      border-radius: 12px;
+    }
+
+    .conversation-item.active {
+      background: var(--panel-hover);
+    }
+
+    .conversation-main {
+      min-width: 0;
+      padding: 10px;
+      border-radius: 10px;
+      color: var(--text);
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .conversation-main:hover {
+      background: rgba(255, 255, 255, 0.75);
+    }
+
+    .conversation-title,
+    .conversation-time {
+      display: block;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .conversation-title {
+      font-size: 13.5px;
+      font-weight: 680;
+    }
+
+    .conversation-time {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .delete-chat {
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      color: #8297a8;
+      background: transparent;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+    }
+
+    .conversation-item:hover .delete-chat,
+    .conversation-item.active .delete-chat {
+      opacity: 1;
+    }
+
+    .delete-chat:hover {
+      color: var(--danger);
+      background: #fff;
+    }
+
+    .empty-history {
+      padding: 16px 10px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .account-panel {
+      margin-top: auto;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      background: rgba(255, 255, 255, 0.76);
+    }
+
+    .account-row {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .account-avatar {
+      width: 36px;
+      height: 36px;
+      overflow: hidden;
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: linear-gradient(145deg, #53b5fa, #0a73d1);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .account-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .account-copy {
+      min-width: 0;
+    }
+
+    .account-copy strong,
+    .account-copy span {
+      display: block;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .account-copy strong {
+      font-size: 12px;
+    }
+
+    .account-copy span {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .sign-out {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      color: #68879b;
+      background: transparent;
+      cursor: pointer;
+      font-size: 17px;
+    }
+
+    .sign-out:hover {
+      color: var(--danger);
+      background: var(--panel-soft);
+    }
+
+    .main {
+      min-width: 0;
+      height: 100vh;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      height: 70px;
+      flex: 0 0 auto;
+      padding: 0 25px;
+      border-bottom: 1px solid rgba(216, 235, 248, 0.86);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.67);
+      backdrop-filter: blur(20px);
+      z-index: 10;
+    }
+
+    .topbar-left {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .menu-button {
+      display: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      place-items: center;
+      color: var(--primary-dark);
+      background: var(--panel-soft);
+      cursor: pointer;
+    }
+
+    .chat-name {
+      min-width: 0;
+    }
+
+    .chat-name strong,
+    .chat-name span {
+      display: block;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .chat-name strong {
+      font-size: 15px;
+    }
+
+    .chat-name span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .status {
+      padding: 7px 11px;
+      border: 1px solid #cae7f7;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: #33718d;
+      background: rgba(239, 251, 255, 0.83);
+      font-size: 11.5px;
+      font-weight: 750;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #38b978;
+      box-shadow: 0 0 0 4px rgba(56, 185, 120, 0.12);
+    }
+
+    .status.offline .status-dot {
+      background: #d99c36;
+      box-shadow: 0 0 0 4px rgba(217, 156, 54, 0.12);
+    }
+
+    .messages-wrap {
+      min-height: 0;
+      flex: 1 1 auto;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+      scrollbar-width: thin;
+      scrollbar-color: #bedcee transparent;
+    }
+
+    .messages {
+      width: min(860px, calc(100% - 34px));
+      min-height: 100%;
+      margin: 0 auto;
+      padding: 40px 0 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 20px;
+    }
+
+    .welcome {
+      margin: auto 0;
+      padding: 34px 0;
+      text-align: center;
+    }
+
+    .welcome .hero-logo {
+      width: 82px;
+      height: 82px;
+      margin: 0 auto 18px;
+      transform: scale(1.25);
+      filter: drop-shadow(0 13px 24px rgba(42, 139, 211, 0.16));
+    }
+
+    .welcome h1 {
+      margin: 0;
+      color: #103b5b;
+      font-size: clamp(30px, 5vw, 48px);
+      line-height: 1.06;
+      letter-spacing: -1.7px;
+    }
+
+    .welcome p {
+      max-width: 650px;
+      margin: 13px auto 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.65;
+    }
+
+    .suggestions {
+      width: min(680px, 100%);
+      margin: 28px auto 0;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .suggestion {
+      padding: 14px 15px;
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      color: #325875;
+      background: rgba(255, 255, 255, 0.76);
+      box-shadow: 0 8px 20px rgba(60, 121, 165, 0.05);
+      text-align: left;
+      cursor: pointer;
+      transition: transform 0.17s ease, background 0.17s ease, border-color 0.17s ease;
+    }
+
+    .suggestion:hover {
+      transform: translateY(-2px);
+      border-color: #b7dcf4;
+      background: #fff;
+    }
+
+    .suggestion strong {
+      display: block;
+      margin-bottom: 3px;
+      font-size: 13px;
+    }
+
+    .suggestion span {
+      color: var(--muted);
+      font-size: 11.5px;
+    }
+
+    .message {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      animation: message-in 0.24s ease both;
+    }
+
+    @keyframes message-in {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .message.user {
+      justify-content: flex-end;
+    }
+
+    .avatar {
+      width: 34px;
+      height: 34px;
+      flex: 0 0 auto;
+      overflow: hidden;
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .message.ai .avatar {
+      color: #fff;
+      background: linear-gradient(145deg, #5ab8fa, #117ad6);
+      box-shadow: 0 7px 18px rgba(15, 117, 204, 0.22);
+    }
+
+    .message.user .avatar {
+      order: 2;
+      color: #1769aa;
+      background: #dfeffc;
+    }
+
+    .bubble {
+      max-width: min(690px, calc(100% - 54px));
+      padding: 14px 16px;
+      border-radius: 18px;
+      overflow-wrap: anywhere;
+      font-size: 14.5px;
+      line-height: 1.62;
+      box-shadow: 0 8px 20px rgba(52, 104, 142, 0.05);
+    }
+
+    .message.ai .bubble {
+      border: 1px solid var(--border);
+      border-top-left-radius: 6px;
+      background: rgba(255, 255, 255, 0.91);
+    }
+
+    .message.user .bubble {
+      border-top-right-radius: 6px;
+      color: #fff;
+      background: linear-gradient(145deg, #1684e8, #0873d3);
+      box-shadow: 0 10px 24px rgba(20, 124, 215, 0.19);
+    }
+
+    .message-text {
+      white-space: pre-wrap;
+    }
+
+    .message-text p {
+      margin: 0 0 9px;
+      white-space: pre-wrap;
+    }
+
+    .message-text p:last-child {
+      margin-bottom: 0;
+    }
+
+    .message-text ul,
+    .message-text ol {
+      margin: 7px 0 7px 20px;
+      padding: 0;
+    }
+
+    .message-text li {
+      margin: 3px 0;
+    }
+
+    .message-text pre {
+      margin: 10px 0 2px;
+      padding: 13px;
+      overflow-x: auto;
+      border-radius: 12px;
+      color: #dff2ff;
+      background: #102b3e;
+      font: 12.5px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: pre;
+    }
+
+    .code-file {
+      margin: 10px 0 2px;
+      overflow: hidden;
+      border: 1px solid #24465c;
+      border-radius: 12px;
+      background: #102b3e;
+    }
+
+    .code-file-header {
+      min-height: 42px;
+      padding: 7px 8px 7px 13px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: #b9d9eb;
+      background: #17384d;
+      font: 11.5px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .code-file-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .code-file-button {
+      min-height: 29px;
+      padding: 0 10px;
+      border: 1px solid rgba(191, 224, 243, 0.25);
+      border-radius: 8px;
+      color: #e7f6ff;
+      background: rgba(255, 255, 255, 0.08);
+      cursor: pointer;
+      font: 700 10.5px/1 ui-sans-serif, system-ui, sans-serif;
+    }
+
+    .code-file-button:hover {
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    .code-file pre {
+      margin: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .message-text code:not(pre code) {
+      padding: 2px 5px;
+      border-radius: 6px;
+      color: #075fa8;
+      background: #eaf5fc;
+      font: 0.9em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .message-image {
+      display: block;
+      width: min(360px, 100%);
+      max-height: 360px;
+      margin-bottom: 10px;
+      border-radius: 13px;
+      object-fit: cover;
+      background: #dcecf6;
+      cursor: zoom-in;
+    }
+
+    .bubble.image-only .message-image {
+      margin-bottom: 0;
+    }
+
+    .source-link {
+      display: inline-flex;
+      margin-top: 10px;
+      color: #1175c4;
+      font-size: 12px;
+      font-weight: 750;
+      text-decoration: none;
+    }
+
+    .source-link:hover {
+      text-decoration: underline;
+    }
+
+    .typing {
+      min-height: 22px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .typing i {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #72a9cd;
+      animation: bounce 1.2s infinite ease-in-out;
+    }
+
+    .typing i:nth-child(2) {
+      animation-delay: 0.14s;
+    }
+
+    .typing i:nth-child(3) {
+      animation-delay: 0.28s;
+    }
+
+    @keyframes bounce {
+      0%,
+      80%,
+      100% {
+        transform: translateY(0);
+        opacity: 0.45;
+      }
+      40% {
+        transform: translateY(-5px);
+        opacity: 1;
+      }
+    }
+
+    .composer-area {
+      flex: 0 0 auto;
+      padding: 10px 18px 22px;
+      background: linear-gradient(to top, rgba(247, 251, 255, 1) 58%, rgba(247, 251, 255, 0));
+    }
+
+    .image-preview-wrap {
+      width: min(860px, 100%);
+      margin: 0 auto 8px;
+    }
+
+    .image-preview-card {
+      width: fit-content;
+      max-width: 100%;
+      padding: 7px;
+      border: 1px solid #cce5f6;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      background: #fff;
+      box-shadow: 0 8px 24px rgba(50, 111, 153, 0.1);
+    }
+
+    .image-preview-card img {
+      width: 66px;
+      height: 52px;
+      border-radius: 9px;
+      object-fit: cover;
+      background: #e8f3fa;
+    }
+
+    .image-preview-info {
+      min-width: 0;
+    }
+
+    .image-preview-info strong,
+    .image-preview-info span {
+      display: block;
+      max-width: 230px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .image-preview-info strong {
+      font-size: 11.5px;
+    }
+
+    .image-preview-info span {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .remove-image {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      color: #7f94a5;
+      background: var(--panel-soft);
+      cursor: pointer;
+    }
+
+    .remove-image:hover {
+      color: var(--danger);
+    }
+
+    .composer {
+      width: min(860px, 100%);
+      margin: 0 auto;
+      padding: 10px 10px 10px 11px;
+      border: 1px solid #cce5f6;
+      border-radius: 21px;
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: var(--shadow);
+    }
+
+    .composer:focus-within {
+      border-color: #90c9ef;
+      box-shadow:
+        0 18px 55px rgba(41, 116, 170, 0.18),
+        0 0 0 3px rgba(27, 139, 229, 0.08);
+    }
+
+    .attach-button {
+      width: 40px;
+      height: 40px;
+      flex: 0 0 auto;
+      border-radius: 13px;
+      display: grid;
+      place-items: center;
+      color: #3d82b4;
+      background: var(--panel-soft);
+      cursor: pointer;
+    }
+
+    .attach-button:hover {
+      color: var(--primary-dark);
+      background: var(--panel-hover);
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 26px;
+      max-height: 180px;
+      padding: 5px 0;
+      border: 0;
+      outline: none;
+      resize: none;
+      color: var(--text);
+      background: transparent;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    textarea::placeholder {
+      color: #8ba3b5;
+    }
+
+    .send-button {
+      width: 42px;
+      height: 42px;
+      flex: 0 0 auto;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: linear-gradient(145deg, #2696ed, #0a70ce);
+      box-shadow: 0 8px 18px rgba(18, 122, 210, 0.23);
+      cursor: pointer;
+      transition: transform 0.16s ease, opacity 0.16s ease;
+    }
+
+    .send-button:hover {
+      transform: translateY(-1px);
+    }
+
+    .send-button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .composer-help {
+      width: min(860px, 100%);
+      margin: 8px auto 0;
+      color: #88a0b1;
+      font-size: 10.5px;
+      text-align: center;
+    }
+
+    .sidebar-overlay {
+      display: none;
+    }
+
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      padding: 28px;
+      display: none;
+      place-items: center;
+      background: rgba(8, 27, 41, 0.82);
+      backdrop-filter: blur(8px);
+      cursor: zoom-out;
+    }
+
+    .lightbox.show {
+      display: grid;
+    }
+
+    .lightbox img {
+      max-width: min(1100px, 100%);
+      max-height: 90vh;
+      border-radius: 15px;
+      object-fit: contain;
+      box-shadow: 0 28px 70px rgba(0, 0, 0, 0.3);
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      z-index: 100;
+      max-width: min(440px, calc(100% - 30px));
+      padding: 11px 15px;
+      border-radius: 12px;
+      color: #fff;
+      background: rgba(23, 58, 82, 0.95);
+      box-shadow: 0 14px 35px rgba(17, 55, 81, 0.23);
+      font-size: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 18px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    @media (max-width: 900px) {
+      .auth-screen {
+        grid-template-columns: 1fr;
+      }
+
+      .auth-hero {
+        display: none;
+      }
+
+      .auth-side {
+        min-height: 100%;
+        padding: 18px;
+        align-items: start;
+      }
+
+      .auth-card {
+        margin: auto 0;
+      }
+    }
+
+    @media (max-width: 780px) {
+      :root {
+        --sidebar-width: 282px;
+      }
+
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        transform: translateX(-102%);
+        transition: transform 0.24s ease;
+        box-shadow: 18px 0 45px rgba(36, 94, 138, 0.15);
+      }
+
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      .sidebar-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 15;
+        background: rgba(19, 48, 70, 0.22);
+        backdrop-filter: blur(2px);
+      }
+
+      .sidebar-overlay.show {
+        display: block;
+      }
+
+      .menu-button {
+        display: grid;
+      }
+
+      .topbar {
+        padding: 0 14px;
+      }
+
+      .status span:last-child {
+        display: none;
+      }
+
+      .messages {
+        width: min(100% - 24px, 860px);
+        padding-top: 24px;
+      }
+
+      .suggestions {
+        grid-template-columns: 1fr;
+      }
+
+      .composer-area {
+        padding: 8px 10px 13px;
+      }
+
+      .composer-help {
+        display: none;
+      }
+
+      .bubble {
+        max-width: calc(100% - 48px);
+      }
+    }
+
+    @media (max-width: 470px) {
+      .auth-card {
+        padding: 22px 18px;
+      }
+
+      .welcome {
+        padding: 20px 0;
+      }
+
+      .welcome p {
+        font-size: 13px;
+      }
+
+      .suggestion:nth-child(n + 3) {
+        display: none;
+      }
+
+      .message {
+        gap: 8px;
+      }
+
+      .avatar {
+        width: 31px;
+        height: 31px;
+      }
+
+      .bubble {
+        padding: 12px 13px;
+        font-size: 13.5px;
+      }
+
+      .attach-button {
+        width: 38px;
+        height: 38px;
+      }
+    }
+
+
+    .settings-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 120;
+      padding: 20px;
+      display: grid;
+      place-items: center;
+      background: rgba(10, 35, 53, 0.46);
+      backdrop-filter: blur(8px);
+    }
+
+    .settings-card {
+      width: min(520px, 100%);
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      background: #fff;
+      box-shadow: 0 28px 80px rgba(16, 61, 91, 0.28);
+    }
+
+    .settings-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      margin-bottom: 18px;
+    }
+
+    .settings-header h2 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: -0.5px;
+    }
+
+    .settings-close {
+      width: 36px;
+      height: 36px;
+      border-radius: 11px;
+      color: var(--muted);
+      background: var(--panel-soft);
+      cursor: pointer;
+      font-size: 21px;
+    }
+
+    .settings-field {
+      margin-top: 14px;
+    }
+
+    .settings-field label {
+      display: block;
+      margin-bottom: 7px;
+      color: #41647e;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .settings-field input,
+    .settings-field select {
+      width: 100%;
+      min-height: 46px;
+      padding: 0 13px;
+      border: 1px solid #cee5f4;
+      border-radius: 12px;
+      outline: none;
+      color: var(--text);
+      background: #fbfdff;
+    }
+
+    .settings-field input:focus,
+    .settings-field select:focus {
+      border-color: #83c4ef;
+      box-shadow: 0 0 0 3px rgba(41, 145, 225, 0.09);
+    }
+
+    .settings-note {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .settings-actions {
+      margin-top: 20px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 9px;
+    }
+
+    .settings-secondary,
+    .settings-primary {
+      min-height: 42px;
+      padding: 0 16px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .settings-secondary {
+      color: #42677f;
+      background: var(--panel-soft);
+    }
+
+    .settings-primary {
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary), #3ca8f3);
+    }
+
+  </style>
+</head>
+
+<body>
+  <section class="auth-screen" id="authScreen">
+    <div class="auth-hero">
+      <div class="auth-brand">
+        <div class="logo" aria-label="VedGPT logo">
+          <span class="ring r1"></span>
+          <span class="ring r2"></span>
+          <span class="ring r3"></span>
+          <span class="dot d1"></span>
+          <span class="dot d2"></span>
+          <span class="dot d3"></span>
+          <span class="letter">V</span>
+        </div>
+        <div>
+          <strong>VedGPT</strong>
+          <span>Imagine. Ask. Create.</span>
+        </div>
+      </div>
+
+      <h1>A smart, friendly assistant that works as one HTML file.</h1>
+      <p>
+        Ask questions, calculate, write, code, and attach images. VedGPT gives direct answers and saves accounts and conversations privately on this device.
+      </p>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <strong>Smarter answers</strong>
+          <span>Uses GPT models, calculations, chat context, and concise replies.</span>
+        </div>
+        <div class="feature-card">
+          <strong>Image uploads</strong>
+          <span>Attach and save compressed images with messages.</span>
+        </div>
+        <div class="feature-card">
+          <strong>Conversation memory</strong>
+          <span>VedGPT remembers chats saved in this browser.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="auth-side">
+      <div class="auth-card">
+        <h2 id="authHeading">Welcome back</h2>
+        <p id="authDescription">Sign in to conversations saved on this device.</p>
+
+        <div class="auth-tabs">
+          <button class="auth-tab active" id="loginTab" type="button">Log in</button>
+          <button class="auth-tab" id="signupTab" type="button">Create account</button>
+        </div>
+
+        <form class="auth-form" id="authForm">
+          <div class="field">
+            <label for="usernameInput">Username</label>
+            <input
+              id="usernameInput"
+              autocomplete="username"
+              minlength="3"
+              maxlength="24"
+              placeholder="Your username"
+              required
+            />
+          </div>
+
+          <div class="field">
+            <label for="passwordInput">Password</label>
+            <input
+              id="passwordInput"
+              type="password"
+              autocomplete="current-password"
+              minlength="6"
+              placeholder="At least 6 characters"
+              required
+            />
+          </div>
+
+          <div class="field hidden" id="confirmField">
+            <label for="confirmPasswordInput">Confirm password</label>
+            <input
+              id="confirmPasswordInput"
+              type="password"
+              autocomplete="new-password"
+              minlength="6"
+              placeholder="Repeat your password"
+            />
+          </div>
+
+          <button class="primary-auth" id="authSubmit" type="submit">Log in</button>
+        </form>
+
+        <div class="auth-message" id="authMessage" role="status"></div>
+        <p class="auth-note">
+          Usernames may contain letters, numbers, periods, underscores, and hyphens.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <div class="app hidden" id="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="logo" aria-label="VedGPT logo">
+          <span class="ring r1"></span>
+          <span class="ring r2"></span>
+          <span class="ring r3"></span>
+          <span class="dot d1"></span>
+          <span class="dot d2"></span>
+          <span class="dot d3"></span>
+          <span class="letter">V</span>
+        </div>
+
+        <div class="brand-copy">
+          <strong>VedGPT</strong>
+          <span>Imagine. Ask. Create.</span>
+        </div>
+      </div>
+
+      <button class="new-chat" id="newChatButton" type="button">
+        <span aria-hidden="true">＋</span>
+        New conversation
+      </button>
+
+      <div class="section-label">Previous conversations</div>
+      <div class="conversation-list" id="conversationList"></div>
+
+      <div class="account-panel">
+        <div class="account-row">
+          <div class="account-avatar" id="accountAvatar">V</div>
+
+          <div class="account-copy">
+            <strong id="accountName">VedGPT user</strong>
+            <span id="accountProvider">Signed in</span>
+          </div>
+
+          <button
+            class="sign-out"
+            id="signOutButton"
+            type="button"
+            aria-label="Sign out"
+            title="Sign out"
+          >↪</button>
+        </div>
+      </div>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="menu-button" id="menuButton" type="button" aria-label="Open menu">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M4 7h16M4 12h16M4 17h16"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+
+          <div class="chat-name">
+            <strong id="currentChatTitle">New conversation</strong>
+            <span>VedGPT assistant</span>
+          </div>
+        </div>
+
+        <div class="status" id="connectionStatus">
+          <span class="status-dot"></span>
+          <span id="connectionLabel">Prepare Chrome AI</span>
+        </div>
+      </header>
+
+      <section class="messages-wrap" id="messagesWrap">
+        <div class="messages" id="messages"></div>
+      </section>
+
+      <footer class="composer-area">
+        <div class="image-preview-wrap hidden" id="imagePreviewWrap">
+          <div class="image-preview-card">
+            <img id="imagePreview" alt="Selected upload preview" />
+
+            <div class="image-preview-info">
+              <strong id="imagePreviewName">Image</strong>
+              <span id="imagePreviewSize"></span>
+            </div>
+
+            <button
+              class="remove-image"
+              id="removeImageButton"
+              type="button"
+              aria-label="Remove image"
+            >×</button>
+          </div>
+        </div>
+
+        <div class="composer">
+          <button
+            class="attach-button"
+            id="attachButton"
+            type="button"
+            aria-label="Upload an image"
+            title="Upload image"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M8.5 12.5 14.8 6.2a3.2 3.2 0 0 1 4.5 4.5l-8.4 8.4a5 5 0 0 1-7.1-7.1l8.2-8.2"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+
+          <input class="hidden" id="imageInput" type="file" accept="image/*" />
+
+          <textarea
+            id="messageInput"
+            rows="1"
+            maxlength="12000"
+            placeholder="Ask VedGPT a question..."
+            aria-label="Message VedGPT"
+          ></textarea>
+
+          <button class="send-button" id="sendButton" type="button" aria-label="Send message" disabled>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M5 12 3.8 4.8a1 1 0 0 1 1.3-1.1l15 7.2a1.2 1.2 0 0 1 0 2.2l-15 7.2a1 1 0 0 1-1.3-1.1L5 12Zm0 0h8"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div class="composer-help">
+          Enter to send · Shift + Enter for a new line · Chats are saved on this device
+        </div>
+      </footer>
+    </main>
+  </div>
+
+
+  <div class="settings-backdrop hidden" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="settings-card">
+      <div class="settings-header">
+        <h2 id="settingsTitle">VedGPT settings</h2>
+        <button class="settings-close" id="settingsCloseButton" type="button" aria-label="Close settings">×</button>
+      </div>
+
+      <div class="settings-field">
+        <label>Chrome built-in AI</label>
+        <input id="openaiApiKeyInput" class="hidden" type="hidden" value="" />
+        <p class="settings-note">No API key is needed. VedGPT uses Gemini Nano built into Chrome and runs on your computer. The first setup may download the model. Chrome 148 or newer on a supported Windows, macOS, Linux, or Chromebook Plus computer is required.</p>
+      </div>
+
+      <div class="settings-field">
+        <label for="personalitySelect">Personality</label>
+        <select id="personalitySelect">
+          <option value="direct">Direct and smart</option>
+          <option value="friendly">Friendly helper</option>
+          <option value="professional">Professional</option>
+          <option value="tutor">Patient tutor</option>
+          <option value="creative">Creative</option>
+        </select>
+      </div>
+
+      <div class="settings-field">
+        <label for="reasoningSelect">Speed and intelligence</label>
+        <select id="reasoningSelect">
+          <option value="auto">Auto — fast facts, smarter coding</option>
+          <option value="fast">Fastest</option>
+          <option value="smart">Smartest</option>
+        </select>
+        <p class="settings-note">Auto keeps factual answers short and gives coding or difficult questions more context.</p>
+      </div>
+
+      <div class="settings-actions">
+        <button class="settings-secondary hidden" id="removeApiKeyButton" type="button">Reset AI</button>
+        <button class="settings-secondary" id="testApiKeyButton" type="button">Prepare AI</button>
+        <button class="settings-primary" id="saveSettingsButton" type="button">Save settings</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="lightbox" id="lightbox" aria-label="Image viewer">
+    <img id="lightboxImage" alt="Expanded uploaded image" />
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    // Login and signup controls are available immediately.
+    (() => {
+      const loginTab = document.getElementById("loginTab");
+      const signupTab = document.getElementById("signupTab");
+      const authForm = document.getElementById("authForm");
+      const authHeading = document.getElementById("authHeading");
+      const authDescription = document.getElementById("authDescription");
+      const authSubmit = document.getElementById("authSubmit");
+      const authMessage = document.getElementById("authMessage");
+      const passwordInput = document.getElementById("passwordInput");
+      const confirmField = document.getElementById("confirmField");
+      const confirmPasswordInput = document.getElementById("confirmPasswordInput");
+
+      window.__vedAuthMode = "login";
+      window.__vedAppReady = false;
+
+      function showMode(mode) {
+        const isSignup = mode === "signup";
+        window.__vedAuthMode = mode;
+
+        loginTab.classList.toggle("active", !isSignup);
+        signupTab.classList.toggle("active", isSignup);
+        confirmField.classList.toggle("hidden", !isSignup);
+        confirmPasswordInput.required = isSignup;
+        passwordInput.autocomplete = isSignup ? "new-password" : "current-password";
+        authHeading.textContent = isSignup ? "Create your account" : "Welcome back";
+        authDescription.textContent = isSignup
+          ? "Choose a username and password to start using VedGPT."
+          : "Sign in to conversations saved on this device.";
+        authSubmit.textContent = isSignup ? "Create account" : "Log in";
+        authMessage.textContent = "";
+        authMessage.classList.remove("success");
+
+        window.dispatchEvent(new CustomEvent("vedgpt-auth-mode", {
+          detail: mode
+        }));
+      }
+
+      window.__vedSetAuthMode = showMode;
+      loginTab.addEventListener("click", () => showMode("login"));
+      signupTab.addEventListener("click", () => showMode("signup"));
+
+      // Give a visible error instead of leaving a dead button while the app loads.
+      authForm.addEventListener("submit", (event) => {
+        if (window.__vedAppReady) return;
+
+        event.preventDefault();
+        authMessage.textContent = location.protocol === "file:"
+          ? "The standalone app is still loading. Please try again."
+          : "VedGPT is still loading. Refresh the page and check the browser console if this continues.";
+      }, true);
+
+      showMode("login");
+    })();
+  </script>
+
+  <script>
+    // Standalone build: no Firebase, localhost server, hosting, App Check, or reCAPTCHA.
+    // Accounts, signed-in status, conversations, and settings are stored persistently in this browser.
+    const appStorage = (() => {
+      try {
+        // Test localStorage directly. The previous build accidentally tested
+        // window.appStorage before it existed, which forced temporary memory
+        // storage and erased accounts, sessions, chats, and settings
+        // whenever the page was closed.
+        const storage = window.localStorage;
+        const testKey = `vedgpt-storage-test-${Date.now()}`;
+        storage.setItem(testKey, "1");
+        storage.removeItem(testKey);
+        window.__vedPersistentStorageAvailable = true;
+        return storage;
+      } catch (error) {
+        console.warn("Persistent browser storage is unavailable; using temporary memory.", error);
+        window.__vedPersistentStorageAvailable = false;
+        const memory = new Map();
+        return {
+          getItem(key) { return memory.has(String(key)) ? memory.get(String(key)) : null; },
+          setItem(key, value) { memory.set(String(key), String(value)); },
+          removeItem(key) { memory.delete(String(key)); },
+          clear() { memory.clear(); },
+          key(index) { return Array.from(memory.keys())[index] || null; },
+          get length() { return memory.size; }
+        };
+      }
+    })();
+    const localAppConfig = { projectId: "vedgpt-standalone" };
+    const browserLocalPersistence = {};
+    const database = {};
+
+    const LOCAL_ACCOUNTS_KEY = "vedgpt:standalone:accounts";
+    const LOCAL_SESSION_KEY = "vedgpt:standalone:session";
+
+    const auth = {
+      currentUser: null,
+      listeners: new Set()
+    };
+
+    function loadAccounts() {
+      try {
+        const value = JSON.parse(appStorage.getItem(LOCAL_ACCOUNTS_KEY) || "{}");
+        return value && typeof value === "object" ? value : {};
+      } catch {
+        return {};
+      }
+    }
+
+    function saveAccounts(accounts) {
+      appStorage.setItem(LOCAL_ACCOUNTS_KEY, JSON.stringify(accounts));
+    }
+
+    function randomSalt() {
+      const bytes = new Uint8Array(16);
+      if (globalThis.crypto?.getRandomValues) {
+        globalThis.crypto.getRandomValues(bytes);
+        return Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
+      }
+      return `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+    }
+
+    async function passwordDigest(password, salt) {
+      const value = `${salt}:${password}`;
+      if (globalThis.crypto?.subtle && globalThis.TextEncoder) {
+        const bytes = new TextEncoder().encode(value);
+        const digest = await crypto.subtle.digest("SHA-256", bytes);
+        return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+      }
+
+      let hash = 2166136261;
+      for (let index = 0; index < value.length; index += 1) {
+        hash ^= value.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+      }
+      return (hash >>> 0).toString(16).padStart(8, "0");
+    }
+
+    function publicUser(account) {
+      if (!account) return null;
+      return {
+        uid: account.uid,
+        email: account.email,
+        displayName: account.displayName || "",
+        photoURL: account.photoURL || ""
+      };
+    }
+
+    function notifyAuthListeners() {
+      for (const listener of auth.listeners) {
+        Promise.resolve().then(() => listener(auth.currentUser));
+      }
+    }
+
+    async function setPersistence() {}
+
+    async function createUserWithEmailAndPassword(_auth, email, password) {
+      const accounts = loadAccounts();
+      if (accounts[email]) {
+        const error = new Error("That username is already taken.");
+        error.code = "auth/email-already-in-use";
+        throw error;
+      }
+
+      const salt = randomSalt();
+      const uid = `local-${await passwordDigest(email, "uid")}`;
+      const account = {
+        uid,
+        email,
+        displayName: "",
+        photoURL: "",
+        salt,
+        passwordHash: await passwordDigest(password, salt),
+        createdAt: Date.now()
+      };
+
+      accounts[email] = account;
+      saveAccounts(accounts);
+      appStorage.setItem(LOCAL_SESSION_KEY, email);
+      auth.currentUser = publicUser(account);
+      notifyAuthListeners();
+      return { user: auth.currentUser };
+    }
+
+    async function signInWithEmailAndPassword(_auth, email, password) {
+      const accounts = loadAccounts();
+      const account = accounts[email];
+      const valid = account && account.passwordHash === await passwordDigest(password, account.salt);
+      if (!valid) {
+        const error = new Error("The username or password is incorrect.");
+        error.code = "auth/invalid-credential";
+        throw error;
+      }
+
+      appStorage.setItem(LOCAL_SESSION_KEY, email);
+      auth.currentUser = publicUser(account);
+      notifyAuthListeners();
+      return { user: auth.currentUser };
+    }
+
+    async function updateProfile(user, updates = {}) {
+      const accounts = loadAccounts();
+      const email = user?.email;
+      if (!email || !accounts[email]) return;
+      accounts[email] = { ...accounts[email], ...updates };
+      saveAccounts(accounts);
+      auth.currentUser = publicUser(accounts[email]);
+      Object.assign(user, auth.currentUser);
+    }
+
+    async function signOut() {
+      appStorage.removeItem(LOCAL_SESSION_KEY);
+      auth.currentUser = null;
+      notifyAuthListeners();
+    }
+
+    function onAuthStateChanged(_auth, listener) {
+      auth.listeners.add(listener);
+      Promise.resolve().then(() => listener(auth.currentUser));
+      return () => auth.listeners.delete(listener);
+    }
+
+    function ref(_database, path) { return { path }; }
+    async function set() {}
+    async function update() {}
+    async function remove() {}
+    function onValue(_reference, _success, error) {
+      Promise.resolve().then(() => error?.(Object.assign(new Error("Local-only storage"), { code: "local-only" })));
+      return () => {};
+    }
+
+    try {
+      const sessionEmail = appStorage.getItem(LOCAL_SESSION_KEY);
+      const account = sessionEmail ? loadAccounts()[sessionEmail] : null;
+      auth.currentUser = publicUser(account);
+      if (!account) appStorage.removeItem(LOCAL_SESSION_KEY);
+    } catch {
+      auth.currentUser = null;
+    }
+
+    const PERSONALITY_STORAGE = "vedgpt:standalone:personality";
+    const REASONING_STORAGE = "vedgpt:standalone:reasoning";
+    const CHROME_AI_READY_STORAGE = "vedgpt:standalone:chrome-ai-ready";
+
+    const BASE_SYSTEM_INSTRUCTION = `You are VedGPT, a fast, highly accurate, direct AI assistant.
+
+CORE BEHAVIOR
+- Answer the user's exact question immediately.
+- The first sentence must contain the direct answer.
+- For simple factual questions, give exactly one complete sentence, normally under 20 words.
+- Include the specific requested value; never answer with a definition, placeholder, tautology, or circular restatement.
+- Example: for “What is the capital of Canada?”, answer “Ottawa is the capital of Canada.”
+- Never paste encyclopedia-style background when the user asked for one fact.
+- Do not repeat the question, add filler, or change the subject.
+- Before replying, verify that every named person, place, company, object, and topic matches the user's request.
+- Silently check that the sentence actually contains the missing fact the user requested.
+- If uncertain, say what is uncertain instead of inventing an answer.
+- Use prior chat messages only when they are clearly necessary for the current question.
+
+RESPONSE STYLE
+- Default to 1–4 concise sentences.
+- Expand only when the user asks for detail or the task genuinely requires steps.
+- For math, give the result first and then only the necessary work.
+- For comparisons, use a compact table only when it improves clarity.
+- Do not claim access to live data or web search unless live information was supplied in the conversation.
+
+CODING
+- Produce complete, runnable code rather than fragments unless the user asks for a fragment.
+- For a website, web app, browser game, or front-end project, return exactly one complete self-contained HTML file inside one html code block.
+- Put all CSS in a style element and all JavaScript in a script element in that same HTML file.
+- The HTML must open directly in a modern browser without a build step.
+- For Python, JavaScript, CSS, Java, C++, SQL, JSON, or other code, use a fenced code block with the correct language.
+- Put a filename comment on the first line when practical, such as // filename: app.js or # filename: main.py.
+- Keep explanations outside code short and useful.
+
+QUALITY CHECK
+- Silently check the answer for relevance, correctness, completeness, and obvious contradictions before sending it.`;
+
+    const PERSONALITY_PROMPTS = {
+      direct: "Be especially direct, sharp, intelligent, and concise. Remove all filler.",
+      friendly: "Be warm, encouraging, conversational, and still concise.",
+      professional: "Use polished, precise, professional language with clear structure.",
+      tutor: "Teach patiently and step by step when needed, but still answer first.",
+      creative: "Be imaginative and expressive while staying accurate and useful."
+    };
+
+    function getPersonality() {
+      try {
+        const value = appStorage.getItem(PERSONALITY_STORAGE) || "direct";
+        return PERSONALITY_PROMPTS[value] ? value : "direct";
+      } catch {
+        return "direct";
+      }
+    }
+
+    function getReasoningMode() {
+      try {
+        const value = appStorage.getItem(REASONING_STORAGE) || "auto";
+        return ["auto", "fast", "smart"].includes(value) ? value : "auto";
+      } catch {
+        return "auto";
+      }
+    }
+
+    function chooseThinkingLevel(input, simpleFact = false) {
+      const mode = getReasoningMode();
+      if (mode === "fast") return simpleFact ? "low" : "minimal";
+      if (mode === "smart") return simpleFact ? "low" : "high";
+      const text = String(input || "");
+      const complex = /\b(build|create|write|program|code|debug|analyze|compare|plan|derive|prove|architecture|algorithm|essay|report|design|html|css|javascript|python|java|c\+\+|sql)\b/i.test(text) || text.length > 500;
+      return simpleFact ? "low" : complex ? "medium" : "low";
+    }
+
+    function getSystemInstruction() {
+      return `${BASE_SYSTEM_INSTRUCTION}\n\nSELECTED PERSONALITY\n- ${PERSONALITY_PROMPTS[getPersonality()]}`;
+    }
+
+    let chromeAIAvailability = "unknown";
+    let chromeAIDownloadProgress = 0;
+    let chromeAIPreparingPromise = null;
+
+    function hasChromePromptAPI() {
+      return typeof window.LanguageModel !== "undefined" &&
+        typeof window.LanguageModel.availability === "function" &&
+        typeof window.LanguageModel.create === "function";
+    }
+
+    function chromeAIOptions(includeImage = false, initialPrompts = []) {
+      const expectedInputs = [{ type: "text", languages: ["en"] }];
+      if (includeImage) expectedInputs.push({ type: "image" });
+      return {
+        expectedInputs,
+        expectedOutputs: [{ type: "text", languages: ["en"] }],
+        initialPrompts
+      };
+    }
+
+    async function checkChromeAIAvailability(includeImage = false) {
+      if (!hasChromePromptAPI()) {
+        chromeAIAvailability = "unsupported";
+        return chromeAIAvailability;
+      }
+      try {
+        chromeAIAvailability = await LanguageModel.availability(chromeAIOptions(includeImage));
+      } catch (error) {
+        console.warn("Chrome AI availability check failed.", error);
+        chromeAIAvailability = "unavailable";
+      }
+      return chromeAIAvailability;
+    }
+
+    function setChromeAIProgress(progress) {
+      chromeAIDownloadProgress = Math.max(0, Math.min(1, Number(progress) || 0));
+      if (typeof refreshChromeAIStatus === "function") refreshChromeAIStatus();
+    }
+
+    async function createChromeAISession({ includeImage = false, initialPrompts = [] } = {}) {
+      if (!hasChromePromptAPI()) {
+        const error = new Error("CHROME_AI_UNSUPPORTED");
+        error.code = "CHROME_AI_UNSUPPORTED";
+        throw error;
+      }
+
+      // Call create() directly so a click on Prepare AI or Send retains
+      // the user activation Chrome may require for the first model download.
+      const options = chromeAIOptions(includeImage, initialPrompts);
+      options.monitor = monitor => {
+        monitor.addEventListener("downloadprogress", event => {
+          setChromeAIProgress(event.loaded);
+        });
+      };
+
+      let session;
+      try {
+        session = await LanguageModel.create(options);
+      } catch (error) {
+        if (/NotSupported|unavailable/i.test(`${error?.name || ""} ${error?.message || ""}`)) {
+          error.code = error.code || "CHROME_AI_UNAVAILABLE";
+        }
+        throw error;
+      }
+      chromeAIAvailability = "available";
+      chromeAIDownloadProgress = 1;
+      try { appStorage.setItem(CHROME_AI_READY_STORAGE, "1"); } catch {}
+      if (typeof refreshChromeAIStatus === "function") refreshChromeAIStatus();
+      return session;
+    }
+
+    async function prepareChromeAI() {
+      if (chromeAIPreparingPromise) return chromeAIPreparingPromise;
+      chromeAIPreparingPromise = (async () => {
+        const session = await createChromeAISession({
+          initialPrompts: [
+            { role: "system", content: getSystemInstruction() },
+            { role: "user", content: "Reply with exactly: Connected" }
+          ]
+        });
+        let result = "Connected";
+        try {
+          result = await session.prompt("Reply with exactly: Connected");
+        } finally {
+          try { session.destroy?.(); } catch {}
+        }
+        return String(result || "Connected");
+      })().finally(() => {
+        chromeAIPreparingPromise = null;
+      });
+      return chromeAIPreparingPromise;
+    }
+
+    function normalizeChromeInitialPrompts(contents) {
+      const prompts = [{ role: "system", content: getSystemInstruction() }];
+      for (const content of contents || []) {
+        const role = content?.role === "model" || content?.role === "assistant" ? "assistant" : "user";
+        const text = (content?.parts || [])
+          .map(part => part?.text != null ? String(part.text) : "")
+          .join("\n")
+          .trim();
+        if (text) prompts.push({ role, content: text });
+      }
+      while (prompts.length > 1 && prompts[1]?.role === "assistant") prompts.splice(1, 1);
+      return prompts;
+    }
+
+    function inlineDataToBlob(part) {
+      const data = part?.inlineData || part?.inline_data;
+      if (!data) return null;
+      const mimeType = data.mimeType || data.mime_type || "image/png";
+      const binary = atob(data.data || "");
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+      return new Blob([bytes], { type: mimeType });
+    }
+
+    async function callChromeAI(contents, generationConfig = {}) {
+      const allContents = Array.isArray(contents) ? contents : [];
+      const last = allContents[allContents.length - 1] || { role: "user", parts: [{ text: "" }] };
+      const history = allContents.slice(0, -1);
+      const imagePart = (last.parts || []).find(part => part?.inlineData || part?.inline_data);
+      const includeImage = Boolean(imagePart);
+      const initialPrompts = normalizeChromeInitialPrompts(history);
+      const session = await createChromeAISession({ includeImage, initialPrompts });
+
+      try {
+        const text = (last.parts || [])
+          .map(part => part?.text != null ? String(part.text) : "")
+          .join("\n")
+          .trim() || "Answer the user's request.";
+
+        let promptInput = text;
+        if (includeImage) {
+          const blob = inlineDataToBlob(imagePart);
+          if (!blob) throw new Error("The selected image could not be read.");
+          promptInput = [{
+            role: "user",
+            content: [
+              { type: "text", value: text },
+              { type: "image", value: blob }
+            ]
+          }];
+        }
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 2 * 60 * 1000);
+        try {
+          const result = await session.prompt(promptInput, { signal: controller.signal });
+          const output = String(result || "").trim();
+          if (!output) throw new Error("Chrome AI returned an empty response.");
+          return output;
+        } finally {
+          clearTimeout(timeout);
+        }
+      } finally {
+        try { session.destroy?.(); } catch {}
+      }
+    }
+
+    async function testOpenAIConnection() {
+      return prepareChromeAI();
+    }
+
+    async function getVedModel() {
+      return {
+        startChat({ history = [], generationConfig = {} } = {}) {
+          return {
+            async sendMessage(message) {
+              const requestParts = Array.isArray(message)
+                ? message.map(part => typeof part === "string" ? { text: part } : part)
+                : [{ text: String(message || "") }];
+              const contents = [
+                ...history,
+                { role: "user", parts: requestParts }
+              ];
+              const output = await callChromeAI(contents, generationConfig);
+              return { response: { text: () => output } };
+            }
+          };
+        }
+      };
+    }
+
+    const elements = {
+      authScreen: document.getElementById("authScreen"),
+      app: document.getElementById("app"),
+      authForm: document.getElementById("authForm"),
+      authHeading: document.getElementById("authHeading"),
+      authDescription: document.getElementById("authDescription"),
+      authSubmit: document.getElementById("authSubmit"),
+      authMessage: document.getElementById("authMessage"),
+      loginTab: document.getElementById("loginTab"),
+      signupTab: document.getElementById("signupTab"),
+      usernameInput: document.getElementById("usernameInput"),
+      passwordInput: document.getElementById("passwordInput"),
+      confirmField: document.getElementById("confirmField"),
+      confirmPasswordInput: document.getElementById("confirmPasswordInput"),
+      signOutButton: document.getElementById("signOutButton"),
+      accountName: document.getElementById("accountName"),
+      accountProvider: document.getElementById("accountProvider"),
+      accountAvatar: document.getElementById("accountAvatar"),
+      messages: document.getElementById("messages"),
+      messagesWrap: document.getElementById("messagesWrap"),
+      messageInput: document.getElementById("messageInput"),
+      sendButton: document.getElementById("sendButton"),
+      newChatButton: document.getElementById("newChatButton"),
+      conversationList: document.getElementById("conversationList"),
+      currentChatTitle: document.getElementById("currentChatTitle"),
+      sidebar: document.getElementById("sidebar"),
+      sidebarOverlay: document.getElementById("sidebarOverlay"),
+      menuButton: document.getElementById("menuButton"),
+      connectionStatus: document.getElementById("connectionStatus"),
+      connectionLabel: document.getElementById("connectionLabel"),
+      attachButton: document.getElementById("attachButton"),
+      imageInput: document.getElementById("imageInput"),
+      imagePreviewWrap: document.getElementById("imagePreviewWrap"),
+      imagePreview: document.getElementById("imagePreview"),
+      imagePreviewName: document.getElementById("imagePreviewName"),
+      imagePreviewSize: document.getElementById("imagePreviewSize"),
+      removeImageButton: document.getElementById("removeImageButton"),
+      lightbox: document.getElementById("lightbox"),
+      lightboxImage: document.getElementById("lightboxImage"),
+      toast: document.getElementById("toast"),
+      settingsModal: document.getElementById("settingsModal"),
+      settingsCloseButton: document.getElementById("settingsCloseButton"),
+      openaiApiKeyInput: document.getElementById("openaiApiKeyInput"),
+      personalitySelect: document.getElementById("personalitySelect"),
+      reasoningSelect: document.getElementById("reasoningSelect"),
+      removeApiKeyButton: document.getElementById("removeApiKeyButton"),
+      testApiKeyButton: document.getElementById("testApiKeyButton"),
+      saveSettingsButton: document.getElementById("saveSettingsButton")
+    };
+
+    window.addEventListener("unhandledrejection", (event) => {
+      console.error("Unhandled VedGPT promise rejection:", event.reason);
+    });
+
+    window.addEventListener("error", (event) => {
+      console.error("Unhandled VedGPT runtime error:", event.error || event.message);
+    });
+
+
+    function refreshChromeAIStatus() {
+      if (window.__vedPersistentStorageAvailable === false) {
+        setStorageStatus("Storage blocked", true);
+        elements.connectionStatus.title = "Your browser is blocking persistent storage. Use a normal browser window and allow site data.";
+        return;
+      }
+
+      if (!hasChromePromptAPI()) {
+        setStorageStatus("Chrome AI unavailable", true);
+        elements.connectionStatus.title = "Use Chrome 148 or newer on a supported desktop computer.";
+        return;
+      }
+
+      if (chromeAIAvailability === "downloading" || (chromeAIDownloadProgress > 0 && chromeAIDownloadProgress < 1)) {
+        setStorageStatus(`Downloading AI ${Math.round(chromeAIDownloadProgress * 100)}%`, false);
+        elements.connectionStatus.title = "Chrome is downloading its built-in AI model.";
+        return;
+      }
+
+      if (chromeAIAvailability === "available" || appStorage.getItem(CHROME_AI_READY_STORAGE) === "1") {
+        setStorageStatus("Chrome AI ready", false);
+        elements.connectionStatus.title = "Open personality and AI settings";
+        return;
+      }
+
+      setStorageStatus("Prepare Chrome AI", false);
+      elements.connectionStatus.title = "Click to prepare Chrome's built-in AI. No API key is needed.";
+    }
+
+    function refreshOpenAIStatus() {
+      refreshChromeAIStatus();
+    }
+
+    function openSettings() {
+      elements.openaiApiKeyInput.value = "";
+      elements.personalitySelect.value = getPersonality();
+      elements.reasoningSelect.value = getReasoningMode();
+      elements.settingsModal.classList.remove("hidden");
+      requestAnimationFrame(() => elements.testApiKeyButton.focus());
+    }
+
+    function closeSettings() {
+      elements.settingsModal.classList.add("hidden");
+    }
+
+    elements.connectionStatus.style.cursor = "pointer";
+    elements.connectionStatus.title = "Open Chrome AI and personality settings";
+    elements.connectionStatus.addEventListener("click", openSettings);
+    elements.settingsCloseButton.addEventListener("click", closeSettings);
+    elements.settingsModal.addEventListener("click", event => {
+      if (event.target === elements.settingsModal) closeSettings();
+    });
+    elements.removeApiKeyButton.addEventListener("click", () => {
+      chromeAIAvailability = "unknown";
+      chromeAIDownloadProgress = 0;
+      try { appStorage.removeItem(CHROME_AI_READY_STORAGE); } catch {}
+      refreshChromeAIStatus();
+      showToast("Chrome AI status reset.");
+    });
+    elements.testApiKeyButton.addEventListener("click", async () => {
+      elements.testApiKeyButton.disabled = true;
+      elements.testApiKeyButton.textContent = "Preparing...";
+      try {
+        await prepareChromeAI();
+        refreshChromeAIStatus();
+        showToast("Chrome built-in AI is ready. No API key is needed.");
+      } catch (error) {
+        console.error("Chrome AI preparation failed.", error);
+        showToast(aiSetupMessage(error) || error?.message || "Chrome AI could not be prepared.");
+      } finally {
+        elements.testApiKeyButton.disabled = false;
+        elements.testApiKeyButton.textContent = "Prepare AI";
+      }
+    });
+
+    elements.saveSettingsButton.addEventListener("click", () => {
+      appStorage.setItem(PERSONALITY_STORAGE, elements.personalitySelect.value);
+      appStorage.setItem(REASONING_STORAGE, elements.reasoningSelect.value);
+      refreshChromeAIStatus();
+      closeSettings();
+      showToast(window.__vedPersistentStorageAvailable === false
+        ? "Settings saved only until this page closes because browser storage is blocked."
+        : "Personality and response settings saved.");
+    });
+
+    Promise.resolve(checkChromeAIAvailability(false)).then(refreshChromeAIStatus).catch(() => refreshChromeAIStatus());
+
+    let authMode = window.__vedAuthMode || "login";
+
+    window.addEventListener("vedgpt-auth-mode", (event) => {
+      authMode = event.detail === "signup" ? "signup" : "login";
+    });
+    let currentUser = null;
+    let conversations = [];
+    let activeConversationId = null;
+    let pendingImage = null;
+    let isReplying = false;
+    let conversationsUnsubscribe = null;
+    let connectionUnsubscribe = null;
+    let toastTimer = null;
+    let databaseAvailable = true;
+    let localFallbackActive = false;
+    let localStorageWarningShown = false;
+
+    Promise.resolve(setPersistence(auth, browserLocalPersistence)).catch((error) => {
+      console.warn("Local account persistence could not be enabled.", error);
+    });
+
+    function makeId() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
+    }
+
+    function normalizeUsername(value) {
+      return value.trim().toLowerCase();
+    }
+
+    function validateUsername(username) {
+      return /^[a-z0-9._-]{3,24}$/.test(username);
+    }
+
+    // Convert each username into a stable internal identifier used only by this file.
+    function usernameToEmail(username) {
+      const normalized = normalizeUsername(username);
+      const encodedUsername = Array.from(normalized)
+        .map((character) => character.codePointAt(0).toString(16).padStart(2, "0"))
+        .join("");
+
+      return `u-${encodedUsername}@users.testmode-c3a28.app`;
+    }
+
+    function usernameStorageKey(uid) {
+      return `vedgpt:${localAppConfig.projectId}:${uid}:username`;
+    }
+
+    function rememberUsername(uid, username) {
+      if (!uid || !username) return;
+
+      try {
+        appStorage.setItem(usernameStorageKey(uid), normalizeUsername(username));
+      } catch (error) {
+        console.warn("Unable to remember the username locally.", error);
+      }
+    }
+
+    function getRememberedUsername(uid) {
+      if (!uid) return "";
+
+      try {
+        return appStorage.getItem(usernameStorageKey(uid)) || "";
+      } catch {
+        return "";
+      }
+    }
+
+    function showAuthMessage(message = "", success = false) {
+      elements.authMessage.textContent = message;
+      elements.authMessage.classList.toggle("success", success);
+    }
+
+    function setAuthMode(mode) {
+      authMode = mode;
+      window.__vedAuthMode = mode;
+      const isSignup = mode === "signup";
+
+      elements.loginTab.classList.toggle("active", !isSignup);
+      elements.signupTab.classList.toggle("active", isSignup);
+      elements.confirmField.classList.toggle("hidden", !isSignup);
+      elements.confirmPasswordInput.required = isSignup;
+      elements.passwordInput.autocomplete = isSignup ? "new-password" : "current-password";
+      elements.authHeading.textContent = isSignup ? "Create your account" : "Welcome back";
+      elements.authDescription.textContent = isSignup
+        ? "Choose a username and password to start using VedGPT."
+        : "Sign in to conversations saved on this device.";
+      elements.authSubmit.textContent = isSignup ? "Create account" : "Log in";
+
+      showAuthMessage();
+    }
+
+    function setAuthLoading(loading) {
+      elements.authSubmit.disabled = loading;
+      elements.authSubmit.textContent = loading
+        ? "Please wait..."
+        : authMode === "signup"
+          ? "Create account"
+          : "Log in";
+    }
+
+    function friendlyAuthError(error) {
+      const code = String(error?.code || "");
+      const hostname = location.hostname || "this local file";
+      const messages = {
+        "auth/invalid-credential": "The username or password is incorrect.",
+        "auth/user-disabled": "This account is unavailable.",
+        "auth/email-already-in-use": "That username is already taken.",
+        "auth/weak-password": "Choose a stronger password with at least 6 characters.",
+        "auth/password-does-not-meet-requirements": "The password does not meet the local account requirements.",
+        "auth/network-request-failed": "The browser could not access local account storage.",
+        "auth/operation-not-allowed": "Local account storage is unavailable in this browser.",
+        "auth/unauthorized-domain": "This browser blocked local account storage.",
+        "auth/operation-not-supported-in-this-environment": "This browser does not allow local account storage for this file.",
+        "auth/invalid-api-key": "The local account configuration is invalid.",
+        "auth/configuration-not-found": "Local account storage is unavailable.",
+        "auth/too-many-requests": "Too many attempts were made. Wait a little and try again.",
+        "auth/invalid-email": "The internal username identifier was rejected. Try a different username.",
+        "auth/admin-restricted-operation": "Account creation is restricted in this browser."
+      };
+
+      console.error("Local account error:", code, error);
+      return messages[code] ||
+        `Account sign-in failed${code ? ` (${code})` : ""}. ${error?.message || "Please check this browser's storage permissions."}`;
+    }
+
+    function friendlyDatabaseError(error) {
+      const code = String(error?.code || "");
+      const message = String(error?.message || "");
+
+      if (/permission.?denied/i.test(`${code} ${message}`)) {
+        return "Cloud chat access is blocked by Realtime Database rules. Chats are being saved in this browser instead.";
+      }
+
+      if (/network|offline|unavailable|failed to fetch/i.test(`${code} ${message}`)) {
+        return "Chats are being saved in this browser.";
+      }
+
+      return message || "Chats are being saved locally.";
+    }
+
+    function localConversationStorageKey() {
+      return currentUser
+        ? `vedgpt:${localAppConfig.projectId}:${currentUser.uid}:conversations`
+        : null;
+    }
+
+    function setStorageStatus(label, offline = false) {
+      elements.connectionStatus.classList.toggle("offline", offline);
+      elements.connectionLabel.textContent = label;
+    }
+
+    function saveConversationsLocally() {
+      const key = localConversationStorageKey();
+      if (!key) return;
+
+      try {
+        appStorage.setItem(key, JSON.stringify(conversations));
+      } catch (error) {
+        // Images can exceed localStorage's small quota. Retry without image bytes
+        // so text chats and titles are still protected.
+        try {
+          const compact = conversations.map((conversation) => ({
+            ...conversation,
+            messages: conversation.messages.map((message) => {
+              const { imageData, ...rest } = message;
+              return rest;
+            })
+          }));
+          appStorage.setItem(key, JSON.stringify(compact));
+        } catch (secondError) {
+          if (!localStorageWarningShown) {
+            localStorageWarningShown = true;
+            showToast("This browser could not store more chat history. Delete large image chats to free space.");
+          }
+          console.warn("Unable to save local chat backup.", secondError);
+        }
+      }
+    }
+
+    function loadConversationsLocally() {
+      const key = localConversationStorageKey();
+      if (!key) return false;
+
+      try {
+        const stored = JSON.parse(appStorage.getItem(key) || "[]");
+        if (!Array.isArray(stored) || !stored.length) return false;
+
+        conversations = stored
+          .filter((conversation) => conversation && conversation.id)
+          .map((conversation) => ({
+            id: String(conversation.id),
+            title: conversation.title || "New conversation",
+            createdAt: Number(conversation.createdAt) || Date.now(),
+            updatedAt: Number(conversation.updatedAt) || Date.now(),
+            messages: Array.isArray(conversation.messages)
+              ? conversation.messages.filter(Boolean)
+              : []
+          }))
+          .sort((a, b) => b.updatedAt - a.updatedAt);
+
+        activeConversationId = conversations[0]?.id || null;
+        return conversations.length > 0;
+      } catch (error) {
+        console.warn("Unable to load local chat backup.", error);
+        return false;
+      }
+    }
+
+    function ensureConversationExists() {
+      if (conversations.length) return;
+
+      const conversation = {
+        id: makeId(),
+        title: "New conversation",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        messages: []
+      };
+
+      conversations = [conversation];
+      activeConversationId = conversation.id;
+      saveConversationsLocally();
+      renderAll();
+    }
+
+    function activateLocalFallback(error) {
+      databaseAvailable = false;
+      localFallbackActive = true;
+      refreshChromeAIStatus();
+
+      if (!conversations.length) {
+        loadConversationsLocally();
+      }
+
+      ensureConversationExists();
+      renderAll();
+      showToast(friendlyDatabaseError(error));
+    }
+
+    function cleanupDataListeners() {
+      if (typeof conversationsUnsubscribe === "function") {
+        conversationsUnsubscribe();
+      }
+
+      if (typeof connectionUnsubscribe === "function") {
+        connectionUnsubscribe();
+      }
+
+      conversationsUnsubscribe = null;
+      connectionUnsubscribe = null;
+    }
+
+    window.__vedAppReady = true;
+
+    elements.authForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      showAuthMessage();
+
+      authMode = window.__vedAuthMode === "signup" ? "signup" : "login";
+
+      const username = normalizeUsername(elements.usernameInput.value);
+      const password = elements.passwordInput.value;
+      const confirmation = elements.confirmPasswordInput.value;
+
+      if (!validateUsername(username)) {
+        showAuthMessage("Use 3–24 letters, numbers, periods, underscores, or hyphens.");
+        return;
+      }
+
+      if (password.length < 6) {
+        showAuthMessage("The password must contain at least 6 characters.");
+        return;
+      }
+
+      if (authMode === "signup" && password !== confirmation) {
+        showAuthMessage("The passwords do not match.");
+        return;
+      }
+
+      setAuthLoading(true);
+
+      try {
+        const internalEmail = usernameToEmail(username);
+
+        if (authMode === "signup") {
+          // Creating the local account is the only required signup step.
+          // Profile and database writes are best-effort and cannot turn a valid
+          // account creation into a false "signup failed" message.
+          const credential = await createUserWithEmailAndPassword(
+            auth,
+            internalEmail,
+            password
+          );
+
+          rememberUsername(credential.user.uid, username);
+
+          try {
+            await updateProfile(credential.user, { displayName: username });
+          } catch (profileError) {
+            console.warn("Account created, but the display name was not saved.", profileError);
+          }
+
+          try {
+            await update(ref(database, `users/${credential.user.uid}/profile`), {
+              username,
+              provider: "username-password",
+              createdAt: Date.now(),
+              lastLoginAt: Date.now()
+            });
+          } catch (databaseError) {
+            // The account is already created and signed in. Chat history will use
+            // local storage until the Realtime Database rules are corrected.
+            console.warn("Account created, but the optional profile write failed.", databaseError);
+          }
+
+          renderUser(credential.user);
+          showAuthMessage("Account created successfully.", true);
+        } else {
+          const credential = await signInWithEmailAndPassword(
+            auth,
+            internalEmail,
+            password
+          );
+          rememberUsername(credential.user.uid, username);
+        }
+      } catch (error) {
+        showAuthMessage(friendlyAuthError(error));
+      } finally {
+        setAuthLoading(false);
+      }
+    });
+
+    elements.signOutButton.addEventListener("click", async () => {
+      await signOut(auth);
+    });
+
+    onAuthStateChanged(auth, async (user) => {
+      cleanupDataListeners();
+      currentUser = user;
+
+      if (!user) {
+        conversations = [];
+        activeConversationId = null;
+        pendingImage = null;
+        renderImagePreview();
+
+        elements.app.classList.add("hidden");
+        elements.authScreen.classList.remove("hidden");
+        elements.passwordInput.value = "";
+        elements.confirmPasswordInput.value = "";
+        setAuthLoading(false);
+        return;
+      }
+
+      elements.authScreen.classList.add("hidden");
+      elements.app.classList.remove("hidden");
+
+      renderUser(user);
+      databaseAvailable = false;
+      localFallbackActive = true;
+
+      // Render chats saved in this browser immediately.
+      loadConversationsLocally();
+      ensureConversationExists();
+      renderAll();
+
+      subscribeToConnection();
+      subscribeToConversations();
+
+      const signedInUsername =
+        user.displayName ||
+        getRememberedUsername(user.uid) ||
+        "VedGPT user";
+
+      rememberUsername(user.uid, signedInUsername);
+
+      await update(ref(database, `users/${user.uid}/profile`), {
+        username: signedInUsername,
+        photoURL: user.photoURL || "",
+        provider: "username-password",
+        lastLoginAt: Date.now()
+      }).catch((error) => {
+        console.warn("Optional profile sync failed; continuing with local chats.", error);
+      });
+
+      requestAnimationFrame(() => elements.messageInput.focus());
+    });
+
+    function renderUser(user) {
+      const displayName =
+        user.displayName ||
+        getRememberedUsername(user.uid) ||
+        "VedGPT user";
+
+      const provider = "Username account";
+
+      elements.accountName.textContent = displayName;
+      elements.accountProvider.textContent = "Local username account";
+      elements.accountAvatar.innerHTML = "";
+
+      if (user.photoURL) {
+        const image = document.createElement("img");
+        image.src = user.photoURL;
+        image.alt = "";
+        elements.accountAvatar.appendChild(image);
+      } else {
+        elements.accountAvatar.textContent = displayName.charAt(0).toUpperCase();
+      }
+    }
+
+    function subscribeToConnection() {
+      databaseAvailable = false;
+      localFallbackActive = true;
+      refreshChromeAIStatus();
+    }
+
+    function subscribeToConversations() {
+      databaseAvailable = false;
+      localFallbackActive = true;
+      loadConversationsLocally();
+      ensureConversationExists();
+      renderAll();
+    }
+
+    function deserializeConversation(id, raw = {}) {
+      const messages = raw.messages
+        ? Object.entries(raw.messages)
+            .map(([messageId, message]) => ({
+              id: messageId,
+              ...message
+            }))
+            .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
+        : [];
+
+      return {
+        id,
+        title: raw.title || "New conversation",
+        createdAt: raw.createdAt || Date.now(),
+        updatedAt: raw.updatedAt || Date.now(),
+        messages
+      };
+    }
+
+    function serializeConversation(conversation) {
+      const messages = {};
+
+      for (const message of conversation.messages) {
+        messages[message.id] = {
+          role: message.role,
+          content: message.content || "",
+          timestamp: message.timestamp || Date.now(),
+          ...(message.imageData
+            ? {
+                imageData: message.imageData,
+                imageName: message.imageName || "image.jpg"
+              }
+            : {}),
+          ...(message.sourceUrl ? { sourceUrl: message.sourceUrl } : {})
+        };
+      }
+
+      return {
+        title: conversation.title,
+        createdAt: conversation.createdAt,
+        updatedAt: conversation.updatedAt,
+        messages
+      };
+    }
+
+    async function saveConversation(conversation) {
+      if (!currentUser) return;
+
+      // Always protect the chat in this browser first. Cloud sync is attempted
+      // afterward; no network database is required.
+      saveConversationsLocally();
+
+      if (!databaseAvailable) {
+        refreshChromeAIStatus();
+        return;
+      }
+
+      try {
+        await set(
+          ref(database, `users/${currentUser.uid}/conversations/${conversation.id}`),
+          serializeConversation(conversation)
+        );
+        setStorageStatus("Cloud synced", false);
+      } catch (error) {
+        activateLocalFallback(error);
+      }
+    }
+
+    async function createConversation() {
+      if (!currentUser) {
+        return;
+      }
+
+      const conversation = {
+        id: makeId(),
+        title: "New conversation",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        messages: []
+      };
+
+      conversations.unshift(conversation);
+      activeConversationId = conversation.id;
+
+      renderAll();
+      closeSidebar();
+      await saveConversation(conversation);
+      elements.messageInput.focus();
+    }
+
+    function getActiveConversation() {
+      return conversations.find(
+        (conversation) => conversation.id === activeConversationId
+      );
+    }
+
+    function renderAll() {
+      renderConversationList();
+      renderMessages();
+      updateComposer();
+    }
+
+    function renderConversationList() {
+      elements.conversationList.innerHTML = "";
+
+      if (!conversations.length) {
+        elements.conversationList.innerHTML =
+          '<div class="empty-history">No conversations yet.</div>';
+        return;
+      }
+
+      [...conversations]
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .forEach((conversation) => {
+          const item = document.createElement("div");
+          item.className =
+            "conversation-item" +
+            (conversation.id === activeConversationId ? " active" : "");
+
+          const openButton = document.createElement("button");
+          openButton.type = "button";
+          openButton.className = "conversation-main";
+
+          const title = document.createElement("span");
+          title.className = "conversation-title";
+          title.textContent = conversation.title;
+
+          const time = document.createElement("span");
+          time.className = "conversation-time";
+          time.textContent = formatDate(conversation.updatedAt);
+
+          openButton.append(title, time);
+
+          openButton.addEventListener("click", () => {
+            activeConversationId = conversation.id;
+            renderAll();
+            closeSidebar();
+          });
+
+          const deleteButton = document.createElement("button");
+          deleteButton.type = "button";
+          deleteButton.className = "delete-chat";
+          deleteButton.setAttribute("aria-label", "Delete conversation");
+          deleteButton.textContent = "×";
+
+          deleteButton.addEventListener("click", (event) => {
+            event.stopPropagation();
+            deleteConversation(conversation.id);
+          });
+
+          item.append(openButton, deleteButton);
+          elements.conversationList.appendChild(item);
+        });
+    }
+
+    async function deleteConversation(id) {
+      if (!currentUser) {
+        return;
+      }
+
+      conversations = conversations.filter(
+        (conversation) => conversation.id !== id
+      );
+
+      if (activeConversationId === id) {
+        activeConversationId = conversations[0]?.id || null;
+      }
+
+      saveConversationsLocally();
+      renderAll();
+
+      if (databaseAvailable) {
+        try {
+          await remove(
+            ref(database, `users/${currentUser.uid}/conversations/${id}`)
+          );
+        } catch (error) {
+          activateLocalFallback(error);
+        }
+      }
+
+      if (!conversations.length) {
+        await createConversation();
+      }
+    }
+
+    function renderMessages() {
+      const conversation = getActiveConversation();
+
+      elements.messages.innerHTML = "";
+      elements.currentChatTitle.textContent =
+        conversation?.title || "New conversation";
+
+      if (!conversation || !conversation.messages.length) {
+        elements.messages.innerHTML = welcomeMarkup();
+        attachSuggestionEvents();
+        return;
+      }
+
+      for (const message of conversation.messages) {
+        elements.messages.appendChild(createMessageElement(message));
+      }
+
+      requestAnimationFrame(scrollToBottom);
+    }
+
+    function welcomeMarkup() {
+      return `
+        <div class="welcome">
+          <div class="logo hero-logo" aria-hidden="true">
+            <span class="ring r1"></span>
+            <span class="ring r2"></span>
+            <span class="ring r3"></span>
+            <span class="dot d1"></span>
+            <span class="dot d2"></span>
+            <span class="dot d3"></span>
+            <span class="letter">V</span>
+          </div>
+
+          <h1>What would you like to know?</h1>
+
+          <p>
+            Ask anything, continue an earlier topic, or ask what VedGPT remembers from saved chats.
+          </p>
+
+          <div class="suggestions">
+            <button class="suggestion" type="button" data-prompt="Why is the sky blue?">
+              <strong>Ask a question</strong>
+              <span>Explore a general topic</span>
+            </button>
+
+            <button class="suggestion" type="button" data-prompt="What is the capital of Japan?">
+              <strong>Learn a fact</strong>
+              <span>Ask a direct factual question</span>
+            </button>
+
+            <button class="suggestion" type="button" data-prompt="Write an essay about the importance of teamwork.">
+              <strong>Write an essay</strong>
+              <span>Create a clear first draft</span>
+            </button>
+
+            <button class="suggestion" type="button" data-prompt="Create a JavaScript to-do list and explain it.">
+              <strong>Help me code</strong>
+              <span>Build and explain a project</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function attachSuggestionEvents() {
+      document.querySelectorAll("[data-prompt]").forEach((button) => {
+        button.addEventListener("click", () => {
+          elements.messageInput.value = button.dataset.prompt;
+          autoResizeInput();
+          updateComposer();
+          elements.messageInput.focus();
+        });
+      });
+    }
+
+    function createMessageElement(message) {
+      const row = document.createElement("div");
+      row.className = `message ${message.role}`;
+
+      const avatar = document.createElement("div");
+      avatar.className = "avatar";
+
+      if (message.role === "ai") {
+        avatar.textContent = "V";
+      } else if (currentUser?.photoURL) {
+        const image = document.createElement("img");
+        image.src = currentUser.photoURL;
+        image.alt = "";
+        avatar.appendChild(image);
+      } else {
+        avatar.textContent = "You";
+      }
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+
+      if (message.imageData) {
+        const image = document.createElement("img");
+        image.className = "message-image";
+        image.src = message.imageData;
+        image.alt = message.imageName || "Uploaded image";
+
+        image.addEventListener("click", () => {
+          openLightbox(message.imageData);
+        });
+
+        bubble.appendChild(image);
+      }
+
+      if (message.content) {
+        const text = document.createElement("div");
+        text.className = "message-text";
+
+        if (message.role === "ai") {
+          renderSafeMarkdown(text, message.content);
+        } else {
+          text.textContent = message.content;
+        }
+
+        bubble.appendChild(text);
+      } else {
+        bubble.classList.add("image-only");
+      }
+
+      if (message.sourceUrl) {
+        const source = document.createElement("a");
+        source.className = "source-link";
+        source.href = message.sourceUrl;
+        source.target = "_blank";
+        source.rel = "noopener noreferrer";
+        source.textContent = "Read the source ↗";
+        bubble.appendChild(source);
+      }
+
+      row.append(avatar, bubble);
+      return row;
+    }
+
+    async function appendMessage(role, content, extras = {}) {
+      const conversation = getActiveConversation();
+
+      if (!conversation) {
+        return;
+      }
+
+      const message = {
+        id: makeId(),
+        role,
+        content,
+        timestamp: Date.now(),
+        ...extras
+      };
+
+      conversation.messages.push(message);
+      conversation.updatedAt = Date.now();
+
+      if (role === "user" && conversation.title === "New conversation") {
+        conversation.title = createTitle(
+          content || extras.imageName || "Image"
+        );
+      }
+
+      if (conversation.messages.length === 1) {
+        elements.messages.innerHTML = "";
+      }
+
+      elements.messages.appendChild(createMessageElement(message));
+      elements.currentChatTitle.textContent = conversation.title;
+
+      renderConversationList();
+      scrollToBottom();
+      await saveConversation(conversation);
+    }
+
+    function createTitle(content) {
+      const oneLine = String(content).replace(/\s+/g, " ").trim();
+
+      return oneLine.length > 34
+        ? `${oneLine.slice(0, 34).trim()}…`
+        : oneLine || "New conversation";
+    }
+
+    function showTyping() {
+      const row = document.createElement("div");
+      row.className = "message ai";
+      row.id = "typingMessage";
+      row.innerHTML = `
+        <div class="avatar">V</div>
+        <div class="bubble">
+          <span class="typing" aria-label="VedGPT is typing">
+            <i></i><i></i><i></i>
+          </span>
+        </div>
+      `;
+
+      elements.messages.appendChild(row);
+      scrollToBottom();
+    }
+
+    function hideTyping() {
+      document.getElementById("typingMessage")?.remove();
+    }
+
+    function cleanMathPrompt(input) {
+      return String(input || "")
+        .toLowerCase()
+        .replace(/[?=]+$/g, "")
+        .replace(/\b(what is|what's|calculate|compute|evaluate|solve|find|equals|equal to|how much is|please|answer)\b/g, " ")
+        .replace(/,/g, "")
+        .replace(/[×·]/g, "*")
+        .replace(/÷/g, "/")
+        .replace(/[−–—]/g, "-")
+        .replace(/π/g, "pi")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function snapMathValue(value) {
+      if (!Number.isFinite(value)) return value;
+      if (Math.abs(value) < 1e-12) return 0;
+
+      const nearestInteger = Math.round(value);
+      if (Math.abs(value - nearestInteger) < 1e-12) {
+        return nearestInteger;
+      }
+
+      return value;
+    }
+
+    function factorial(value) {
+      if (!Number.isInteger(value) || value < 0 || value > 170) {
+        return NaN;
+      }
+
+      let result = 1;
+      for (let index = 2; index <= value; index += 1) {
+        result *= index;
+      }
+      return result;
+    }
+
+    function evaluateTrigFunction(name, rawValue, useRadians) {
+      const value = Number(rawValue);
+      if (!Number.isFinite(value)) return null;
+
+      const radians = useRadians ? value : value * Math.PI / 180;
+
+      if (name === "tan" && Math.abs(Math.cos(radians)) < 1e-12) {
+        return { undefined: true };
+      }
+
+      const functions = {
+        sin: Math.sin,
+        cos: Math.cos,
+        tan: Math.tan,
+        sec: (angle) => 1 / Math.cos(angle),
+        csc: (angle) => 1 / Math.sin(angle),
+        cot: (angle) => 1 / Math.tan(angle)
+      };
+
+      const fn = functions[name];
+      if (!fn) return null;
+
+      const result = snapMathValue(fn(radians));
+      return { value: result };
+    }
+
+    function tryMathAnswer(input) {
+      let expression = cleanMathPrompt(input);
+
+      if (!expression) {
+        return null;
+      }
+
+      const percentageMatch = expression.match(
+        /^(-?\d+(?:\.\d+)?)\s*%\s+of\s+(-?\d+(?:\.\d+)?)$/
+      );
+
+      if (percentageMatch) {
+        const percentage = Number(percentageMatch[1]);
+        const amount = Number(percentageMatch[2]);
+        const result = (percentage / 100) * amount;
+
+        return `${formatNumber(result)}.`;
+      }
+
+      const conversionMatch = expression.match(
+        /^(-?\d+(?:\.\d+)?)\s*(km|kilometers?|miles?|mi|kg|kilograms?|lb|lbs|pounds?|c|°c|f|°f)\s+(?:to|in)\s+(km|kilometers?|miles?|mi|kg|kilograms?|lb|lbs|pounds?|c|°c|f|°f)$/
+      );
+
+      if (conversionMatch) {
+        const value = Number(conversionMatch[1]);
+        const from = normalizeUnit(conversionMatch[2]);
+        const to = normalizeUnit(conversionMatch[3]);
+        const converted = convertUnit(value, from, to);
+
+        if (converted !== null) {
+          return `${formatNumber(converted)} ${to}.`;
+        }
+      }
+
+      const inverseTrigMatch = expression.match(
+        /^(asin|arcsin|acos|arccos|atan|arctan)\s*\(\s*(-?\d+(?:\.\d+)?)\s*\)\s*(?:in\s+degrees?)?$/
+      );
+
+      if (inverseTrigMatch) {
+        const names = {
+          asin: Math.asin,
+          arcsin: Math.asin,
+          acos: Math.acos,
+          arccos: Math.acos,
+          atan: Math.atan,
+          arctan: Math.atan
+        };
+
+        const result = names[inverseTrigMatch[1]](Number(inverseTrigMatch[2]));
+
+        if (!Number.isFinite(result)) {
+          return "Undefined for that input.";
+        }
+
+        return `${formatNumber(snapMathValue(result * 180 / Math.PI))}°`;
+      }
+
+      const trigMatch = expression.match(
+        /^(sin|cos|tan|sec|csc|cot)\s*\(\s*(-?\d+(?:\.\d+)?)\s*(°|deg(?:rees?)?|rad(?:ians?)?)?\s*\)$/
+      ) || expression.match(
+        /^(sin|cos|tan|sec|csc|cot)\s+(-?\d+(?:\.\d+)?)\s*(°|deg(?:rees?)?|rad(?:ians?)?)?$/
+      );
+
+      if (trigMatch) {
+        const unit = trigMatch[3] || "";
+        const useRadians = /^rad/.test(unit);
+        const result = evaluateTrigFunction(trigMatch[1], trigMatch[2], useRadians);
+
+        if (!result) return null;
+        if (result.undefined) return "Undefined.";
+
+        return `${formatNumber(result.value)}.`;
+      }
+
+      const specialMatch = expression.match(
+        /^(sqrt|square root of|cbrt|cube root of|abs|absolute value of|ln|log)\s*\(?\s*(-?\d+(?:\.\d+)?)\s*\)?$/
+      );
+
+      if (specialMatch) {
+        const operation = specialMatch[1];
+        const value = Number(specialMatch[2]);
+        let result;
+
+        if (operation === "sqrt" || operation === "square root of") result = Math.sqrt(value);
+        if (operation === "cbrt" || operation === "cube root of") result = Math.cbrt(value);
+        if (operation === "abs" || operation === "absolute value of") result = Math.abs(value);
+        if (operation === "ln") result = Math.log(value);
+        if (operation === "log") result = Math.log10(value);
+
+        if (!Number.isFinite(result)) {
+          return "Undefined for real numbers.";
+        }
+
+        return `${formatNumber(snapMathValue(result))}.`;
+      }
+
+      const factorialMatch = expression.match(/^(\d+)\s*!$/);
+      if (factorialMatch) {
+        const result = factorial(Number(factorialMatch[1]));
+
+        return Number.isFinite(result)
+          ? `${formatNumber(result)}.`
+          : "That factorial is outside the supported range.";
+      }
+
+      const usesRadians = /\bpi\b|\brad(?:ians?)?\b/.test(expression);
+
+      expression = expression
+        .replace(/\bradians?\b|\brad\b/g, "")
+        .replace(/\bdegrees?\b|\bdeg\b|°/g, "")
+        .replace(/\bpi\b/g, "PI")
+        .replace(/\be\b/g, "E")
+        .replace(/\^/g, "**")
+        .replace(/(\d|\))\s*(PI|E|\()/g, "$1*$2")
+        .replace(/(PI|E|\))\s*(\d|\()/g, "$1*$2");
+
+      const allowedFunctions = usesRadians
+        ? {
+            sin: "Math.sin",
+            cos: "Math.cos",
+            tan: "Math.tan"
+          }
+        : {
+            sin: "sinDegrees",
+            cos: "cosDegrees",
+            tan: "tanDegrees"
+          };
+
+      expression = expression
+        .replace(/\bsqrt\s*\(/g, "Math.sqrt(")
+        .replace(/\bcbrt\s*\(/g, "Math.cbrt(")
+        .replace(/\babs\s*\(/g, "Math.abs(")
+        .replace(/\bln\s*\(/g, "Math.log(")
+        .replace(/\blog\s*\(/g, "Math.log10(")
+        .replace(/\bsin\s*\(/g, `${allowedFunctions.sin}(`)
+        .replace(/\bcos\s*\(/g, `${allowedFunctions.cos}(`)
+        .replace(/\btan\s*\(/g, `${allowedFunctions.tan}(`)
+        .replace(/\bPI\b/g, "Math.PI")
+        .replace(/\bE\b/g, "Math.E");
+
+      if (
+        !/^[0-9+\-*/().%\sA-Za-z]+$/.test(expression) ||
+        /(?:constructor|prototype|window|document|global|this|function|eval|import|export)/i.test(expression)
+      ) {
+        return null;
+      }
+
+      const permittedIdentifiers = new Set([
+        "Math", "sqrt", "cbrt", "abs", "log", "log10", "sin", "cos", "tan",
+        "PI", "E", "sinDegrees", "cosDegrees", "tanDegrees"
+      ]);
+
+      const identifiers = expression.match(/[A-Za-z_][A-Za-z0-9_]*/g) || [];
+      if (identifiers.some((identifier) => !permittedIdentifiers.has(identifier))) {
+        return null;
+      }
+
+      try {
+        const sinDegrees = (value) => Math.sin(Number(value) * Math.PI / 180);
+        const cosDegrees = (value) => Math.cos(Number(value) * Math.PI / 180);
+        const tanDegrees = (value) => {
+          const radians = Number(value) * Math.PI / 180;
+          if (Math.abs(Math.cos(radians)) < 1e-12) return NaN;
+          return Math.tan(radians);
+        };
+
+        const result = Function(
+          "sinDegrees",
+          "cosDegrees",
+          "tanDegrees",
+          `"use strict"; return (${expression});`
+        )(sinDegrees, cosDegrees, tanDegrees);
+
+        if (typeof result !== "number" || !Number.isFinite(result)) {
+          return null;
+        }
+
+        return `${formatNumber(snapMathValue(result))}.`;
+      } catch {
+        return null;
+      }
+    }
+
+    function normalizeUnit(unit) {
+      const value = unit.toLowerCase();
+
+      if (["km", "kilometer", "kilometers"].includes(value)) return "km";
+      if (["mile", "miles", "mi"].includes(value)) return "miles";
+      if (["kg", "kilogram", "kilograms"].includes(value)) return "kg";
+      if (["lb", "lbs", "pound", "pounds"].includes(value)) return "lb";
+      if (["c", "°c"].includes(value)) return "°C";
+      if (["f", "°f"].includes(value)) return "°F";
+
+      return value;
+    }
+
+    function convertUnit(value, from, to) {
+      if (from === to) return value;
+      if (from === "km" && to === "miles") return value * 0.621371;
+      if (from === "miles" && to === "km") return value / 0.621371;
+      if (from === "kg" && to === "lb") return value * 2.2046226218;
+      if (from === "lb" && to === "kg") return value / 2.2046226218;
+      if (from === "°C" && to === "°F") return value * 9 / 5 + 32;
+      if (from === "°F" && to === "°C") return (value - 32) * 5 / 9;
+
+      return null;
+    }
+
+    function formatNumber(value) {
+      return Number(value.toFixed(8)).toLocaleString(undefined, {
+        maximumFractionDigits: 8
+      });
+    }
+
+    const MEMORY_STOP_WORDS = new Set([
+      "a", "an", "and", "are", "as", "at", "be", "been", "but", "by", "can",
+      "did", "do", "does", "for", "from", "had", "has", "have", "how", "i",
+      "in", "is", "it", "me", "my", "of", "on", "or", "our", "said", "say",
+      "tell", "that", "the", "their", "this", "to", "was", "we", "were",
+      "what", "when", "where", "which", "who", "why", "with", "you", "your"
+    ]);
+
+    function memoryTokens(value) {
+      return String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9\s'-]/g, " ")
+        .split(/\s+/)
+        .filter((word) => word.length > 2 && !MEMORY_STOP_WORDS.has(word));
+    }
+
+    function shortSnippet(value, max = 180) {
+      const text = String(value || "").replace(/\s+/g, " ").trim();
+      if (text.length <= max) return text;
+      return `${text.slice(0, max).replace(/\s+\S*$/, "")}…`;
+    }
+
+    function savedUserMessages(excludeLatest = true) {
+      const active = getActiveConversation();
+      const latestId = excludeLatest
+        ? [...(active?.messages || [])].reverse().find((message) => message.role === "user")?.id
+        : null;
+
+      return conversations
+        .flatMap((conversation) => conversation.messages.map((message) => ({
+          ...message,
+          conversationTitle: conversation.title,
+          conversationUpdatedAt: conversation.updatedAt
+        })))
+        .filter((message) => message.role === "user" && message.content)
+        .filter((message) => !latestId || message.id !== latestId)
+        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    }
+
+    function relevantMemories(query, limit = 4) {
+      const tokens = memoryTokens(query);
+      if (!tokens.length) return [];
+
+      return savedUserMessages(true)
+        .map((message) => {
+          const content = String(message.content || "").toLowerCase();
+          const words = new Set(memoryTokens(content));
+          let exactMatches = 0;
+          let score = 0;
+
+          for (const token of tokens) {
+            if (words.has(token)) {
+              exactMatches += 1;
+              score += token.length > 6 ? 5 : 3;
+            } else if (token.length > 5 && content.includes(token)) {
+              score += 1;
+            }
+          }
+
+          // Require a meaningful match. This prevents unrelated recent chats
+          // from being injected into ordinary factual questions.
+          const minimumMatches = tokens.length >= 4 ? 2 : 1;
+          return exactMatches >= minimumMatches && score >= 3
+            ? { ...message, score }
+            : null;
+        })
+        .filter(Boolean)
+        .sort((a, b) => b.score - a.score || (b.timestamp || 0) - (a.timestamp || 0))
+        .slice(0, limit);
+    }
+
+    function formatMemories(messages, heading = "From your saved chats:") {
+      if (!messages.length) return null;
+
+      const lines = messages.map((message) => {
+        const date = new Date(message.timestamp || message.conversationUpdatedAt)
+          .toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+        return `• ${shortSnippet(message.content)} (${date})`;
+      });
+
+      return `${heading}\n${lines.join("\n")}`;
+    }
+
+    function previousConversation() {
+      const ordered = [...conversations]
+        .filter((conversation) => conversation.messages.length)
+        .sort((a, b) => b.updatedAt - a.updatedAt);
+
+      return ordered.find((conversation) => conversation.id !== activeConversationId) || null;
+    }
+
+    function summarizeSavedConversation(conversation) {
+      const topics = (conversation?.messages || [])
+        .filter((message) => message.role === "user" && message.content)
+        .slice(-6)
+        .map((message) => `• ${shortSnippet(message.content, 120)}`);
+
+      return topics.length ? topics.join("\n") : "There is not enough to summarize yet.";
+    }
+
+    function memoryAnswer(input) {
+      const lower = input.toLowerCase();
+
+      if (/\bhow many (?:chats|conversations)\b/.test(lower)) {
+        return `You have ${conversations.length} saved conversation${conversations.length === 1 ? "" : "s"}.`;
+      }
+
+      if (/\bhow many messages\b/.test(lower)) {
+        const count = conversations.reduce((total, conversation) => total + conversation.messages.length, 0);
+        return `You have ${count} saved messages across ${conversations.length} conversations.`;
+      }
+
+      if (/\bsummarize (?:this|our) conversation\b|\bwhat have we discussed here\b/.test(lower)) {
+        return summarizeSavedConversation(getActiveConversation());
+      }
+
+      if (/\bwhat did we (?:discuss|talk about) last time\b|\bprevious conversation\b/.test(lower)) {
+        const previous = previousConversation();
+        return previous ? `${previous.title}\n${summarizeSavedConversation(previous)}` : "I do not see an earlier saved conversation.";
+      }
+
+      if (/\bwhat was my last question\b|\bwhat did i ask last\b/.test(lower)) {
+        const previous = savedUserMessages(true)[0];
+        return previous ? `Your previous question was: “${shortSnippet(previous.content, 230)}”` : "I do not see an earlier question.";
+      }
+
+      if (/\bwhat do you (?:know|remember) about me\b|\bwhat have i told you\b/.test(lower)) {
+        const recent = savedUserMessages(true).slice(0, 6);
+        return recent.length ? formatMemories(recent, "I remember these recent saved topics:") : "I do not have earlier saved messages yet.";
+      }
+
+      if (/\bremember\b|\bwhat did i (?:say|tell you)\b|\bdid i mention\b/.test(lower)) {
+        const matches = relevantMemories(input, 4);
+        if (matches.length) return formatMemories(matches);
+        return "I could not find a matching earlier message.";
+      }
+
+      return null;
+    }
+
+    function renderInlineCode(container, text) {
+      const pieces = String(text).split(/(`[^`\n]+`)/g);
+
+      for (const piece of pieces) {
+        if (piece.startsWith("`") && piece.endsWith("`")) {
+          const code = document.createElement("code");
+          code.textContent = piece.slice(1, -1);
+          container.appendChild(code);
+        } else {
+          container.appendChild(document.createTextNode(piece));
+        }
+      }
+    }
+
+    function safeFileName(value, fallback = "vedgpt-project") {
+      const cleaned = String(value || "")
+        .replace(/<[^>]*>/g, "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 60);
+
+      return cleaned || fallback;
+    }
+
+    function htmlFileName(code) {
+      const titleMatch = String(code).match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+      const conversationTitle = getActiveConversation()?.title;
+      const base = titleMatch?.[1] || conversationTitle || "vedgpt-project";
+      return `${safeFileName(base)}.html`;
+    }
+
+    const CODE_FILE_TYPES = {
+      html: { extension: "html", mime: "text/html", defaultName: "index.html" },
+      htm: { extension: "html", mime: "text/html", defaultName: "index.html" },
+      css: { extension: "css", mime: "text/css", defaultName: "style.css" },
+      javascript: { extension: "js", mime: "text/javascript", defaultName: "script.js" },
+      js: { extension: "js", mime: "text/javascript", defaultName: "script.js" },
+      typescript: { extension: "ts", mime: "text/plain", defaultName: "app.ts" },
+      ts: { extension: "ts", mime: "text/plain", defaultName: "app.ts" },
+      python: { extension: "py", mime: "text/x-python", defaultName: "main.py" },
+      py: { extension: "py", mime: "text/x-python", defaultName: "main.py" },
+      java: { extension: "java", mime: "text/x-java-source", defaultName: "Main.java" },
+      c: { extension: "c", mime: "text/x-c", defaultName: "main.c" },
+      cpp: { extension: "cpp", mime: "text/x-c++src", defaultName: "main.cpp" },
+      "c++": { extension: "cpp", mime: "text/x-c++src", defaultName: "main.cpp" },
+      csharp: { extension: "cs", mime: "text/plain", defaultName: "Program.cs" },
+      cs: { extension: "cs", mime: "text/plain", defaultName: "Program.cs" },
+      json: { extension: "json", mime: "application/json", defaultName: "data.json" },
+      sql: { extension: "sql", mime: "application/sql", defaultName: "query.sql" },
+      xml: { extension: "xml", mime: "application/xml", defaultName: "document.xml" },
+      markdown: { extension: "md", mime: "text/markdown", defaultName: "README.md" },
+      md: { extension: "md", mime: "text/markdown", defaultName: "README.md" },
+      bash: { extension: "sh", mime: "text/x-shellscript", defaultName: "script.sh" },
+      shell: { extension: "sh", mime: "text/x-shellscript", defaultName: "script.sh" },
+      powershell: { extension: "ps1", mime: "text/plain", defaultName: "script.ps1" },
+      php: { extension: "php", mime: "application/x-httpd-php", defaultName: "index.php" },
+      ruby: { extension: "rb", mime: "text/x-ruby", defaultName: "main.rb" },
+      go: { extension: "go", mime: "text/x-go", defaultName: "main.go" },
+      rust: { extension: "rs", mime: "text/plain", defaultName: "main.rs" },
+      swift: { extension: "swift", mime: "text/plain", defaultName: "main.swift" },
+      kotlin: { extension: "kt", mime: "text/plain", defaultName: "Main.kt" },
+      yaml: { extension: "yaml", mime: "text/yaml", defaultName: "config.yaml" },
+      yml: { extension: "yml", mime: "text/yaml", defaultName: "config.yml" }
+    };
+
+    function detectCodeLanguage(codeText, language = "") {
+      const normalized = String(language || "").trim().toLowerCase();
+      if (CODE_FILE_TYPES[normalized]) return normalized;
+      const code = String(codeText || "");
+      if (/^\s*(?:<!doctype\s+html|<html\b)/i.test(code)) return "html";
+      if (/^\s*(?:import\s+|from\s+\w+\s+import|def\s+\w+\s*\()/m.test(code)) return "python";
+      if (/^\s*(?:const|let|var|function|document\.|window\.)\b/m.test(code)) return "javascript";
+      if (/^\s*[.#]?[a-z][^{\n]*\{[^}]*:[^}]*\}/im.test(code)) return "css";
+      if (/^\s*[\[{]/.test(code) && /["']\s*:/.test(code)) return "json";
+      return normalized || "txt";
+    }
+
+    function filenameFromCodeComment(codeText) {
+      const firstLines = String(codeText || "").split("\n").slice(0, 4).join("\n");
+      const match = firstLines.match(/(?:filename|file)\s*:\s*([A-Za-z0-9._-]+\.[A-Za-z0-9]+)\b/i);
+      return match?.[1] || "";
+    }
+
+    function codeFileInfo(codeText, language = "") {
+      const detected = detectCodeLanguage(codeText, language);
+      const type = CODE_FILE_TYPES[detected] || { extension: "txt", mime: "text/plain", defaultName: "code.txt" };
+      if (detected === "html") {
+        return { ...type, language: detected, fileName: htmlFileName(codeText) };
+      }
+      const declared = filenameFromCodeComment(codeText);
+      const conversationBase = safeFileName(getActiveConversation()?.title || "vedgpt-code", "vedgpt-code");
+      const fallback = type.defaultName || `${conversationBase}.${type.extension}`;
+      return { ...type, language: detected, fileName: declared || fallback };
+    }
+
+    function downloadTextFile(fileName, content, mimeType = "text/plain") {
+      const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function createCodeBlock(codeText, language = "") {
+      const info = codeFileInfo(codeText, language);
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "code-file";
+
+      const header = document.createElement("div");
+      header.className = "code-file-header";
+
+      const label = document.createElement("span");
+      label.textContent = info.fileName;
+
+      const actions = document.createElement("div");
+      actions.className = "code-file-actions";
+
+      const copyButton = document.createElement("button");
+      copyButton.type = "button";
+      copyButton.className = "code-file-button";
+      copyButton.textContent = "Copy";
+      copyButton.addEventListener("click", async () => {
+        try {
+          if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(codeText);
+          } else {
+            const area = document.createElement("textarea");
+            area.value = codeText;
+            area.style.position = "fixed";
+            area.style.opacity = "0";
+            document.body.appendChild(area);
+            area.select();
+            document.execCommand("copy");
+            area.remove();
+          }
+          copyButton.textContent = "Copied";
+          setTimeout(() => { copyButton.textContent = "Copy"; }, 1200);
+        } catch {
+          showToast("Unable to copy the code.");
+        }
+      });
+      actions.appendChild(copyButton);
+
+      const downloadButton = document.createElement("button");
+      downloadButton.type = "button";
+      downloadButton.className = "code-file-button";
+      downloadButton.textContent = `Download .${info.extension}`;
+      downloadButton.addEventListener("click", () => {
+        downloadTextFile(info.fileName, codeText, info.mime);
+      });
+      actions.appendChild(downloadButton);
+
+      header.append(label, actions);
+
+      const pre = document.createElement("pre");
+      const code = document.createElement("code");
+      code.textContent = codeText;
+      pre.appendChild(code);
+
+      wrapper.append(header, pre);
+      return wrapper;
+    }
+
+    function renderSafeMarkdown(container, content) {
+      container.innerHTML = "";
+      const sections = String(content || "").split(/```/g);
+
+      sections.forEach((section, sectionIndex) => {
+        if (sectionIndex % 2 === 1) {
+          const normalized = section.replace(/^\s*\n/, "");
+          const firstNewline = normalized.indexOf("\n");
+          let language = "";
+          let codeText = normalized;
+
+          if (firstNewline >= 0) {
+            const fenceHeader = normalized.slice(0, firstNewline).trim();
+            const possibleLanguage = fenceHeader.split(/\s+/)[0];
+            if (/^[a-zA-Z0-9_+#.-]{1,24}$/.test(possibleLanguage)) {
+              language = possibleLanguage;
+              codeText = normalized.slice(firstNewline + 1);
+            }
+          }
+
+          codeText = codeText.replace(/\s+$/, "");
+          container.appendChild(createCodeBlock(codeText, language));
+          return;
+        }
+
+        const blocks = section.split(/\n{2,}/);
+
+        for (const block of blocks) {
+          const trimmed = block.trim();
+          if (!trimmed) continue;
+
+          const lines = trimmed.split("\n");
+
+          if (lines.every((line) => /^\s*[-*]\s+/.test(line))) {
+            const list = document.createElement("ul");
+
+            for (const line of lines) {
+              const item = document.createElement("li");
+              renderInlineCode(item, line.replace(/^\s*[-*]\s+/, ""));
+              list.appendChild(item);
+            }
+
+            container.appendChild(list);
+            continue;
+          }
+
+          if (lines.every((line) => /^\s*\d+\.\s+/.test(line))) {
+            const list = document.createElement("ol");
+
+            for (const line of lines) {
+              const item = document.createElement("li");
+              renderInlineCode(item, line.replace(/^\s*\d+\.\s+/, ""));
+              list.appendChild(item);
+            }
+
+            container.appendChild(list);
+            continue;
+          }
+
+          const paragraph = document.createElement("p");
+          renderInlineCode(paragraph, trimmed);
+          container.appendChild(paragraph);
+        }
+      });
+    }
+
+    function textOnlyMessages() {
+      return conversations
+        .flatMap((conversation) =>
+          conversation.messages.map((message) => ({
+            ...message,
+            conversationId: conversation.id,
+            conversationTitle: conversation.title,
+            conversationUpdatedAt: conversation.updatedAt
+          }))
+        )
+        .filter((message) => message.content)
+        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    }
+
+    function buildMemoryContext(query) {
+      const relevant = relevantMemories(query, 6);
+
+      const combined = [];
+      const seen = new Set();
+
+      // Only include genuinely relevant memories. Never append unrelated
+      // recent chats merely because they are recent.
+      for (const message of relevant) {
+        if (!message.content || seen.has(message.id)) continue;
+        seen.add(message.id);
+        combined.push(message);
+      }
+
+      if (!combined.length) {
+        return "";
+      }
+
+      const lines = [];
+      let usedCharacters = 0;
+
+      for (const message of combined) {
+        const entry = `[${message.conversationTitle || "Saved chat"}] ${shortSnippet(message.content, 420)}`;
+
+        if (usedCharacters + entry.length > 5200) {
+          break;
+        }
+
+        lines.push(`- ${entry}`);
+        usedCharacters += entry.length;
+      }
+
+      return lines.length
+        ? `Relevant information from the user's earlier saved conversations:\n${lines.join("\n")}`
+        : "";
+    }
+
+    function buildChatHistory() {
+      const conversation = getActiveConversation();
+      if (!conversation) return [];
+
+      const priorMessages = conversation.messages.slice(0, -1);
+      const selected = [];
+      let usedCharacters = 0;
+
+      for (let index = priorMessages.length - 1; index >= 0; index -= 1) {
+        const message = priorMessages[index];
+
+        if (!message.content || !["user", "ai"].includes(message.role)) {
+          continue;
+        }
+
+        if (usedCharacters + message.content.length > 14000) {
+          break;
+        }
+
+        selected.unshift(message);
+        usedCharacters += message.content.length;
+      }
+
+      const history = [];
+
+      for (const message of selected) {
+        const role = message.role === "ai" ? "model" : "user";
+        const previous = history[history.length - 1];
+
+        if (previous?.role === role) {
+          previous.parts[0].text += `\n${message.content}`;
+        } else {
+          history.push({
+            role,
+            parts: [{ text: message.content }]
+          });
+        }
+      }
+
+      while (history.length && history[0].role === "model") {
+        history.shift();
+      }
+
+      return history;
+    }
+
+    function imageDataToPart(dataUrl) {
+      const match = String(dataUrl || "").match(/^data:([^;]+);base64,(.+)$/);
+
+      if (!match) {
+        return null;
+      }
+
+      return {
+        inlineData: {
+          mimeType: match[1],
+          data: match[2]
+        }
+      };
+    }
+
+    const AI_RESPONSE_TIMEOUT_MS = 2 * 60 * 1000;
+
+    function withTimeout(promise, milliseconds) {
+      let timer;
+
+      const timeoutPromise = new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          const error = new Error("VedGPT reached the two-minute response limit.");
+          error.name = "TimeoutError";
+          reject(error);
+        }, milliseconds);
+      });
+
+      return Promise.race([promise, timeoutPromise])
+        .finally(() => clearTimeout(timer));
+    }
+
+    function isSimpleFactQuestion(input) {
+      const text = String(input || "").trim();
+      if (!text || text.length > 180) return false;
+
+      const asksForExplanation =
+        /\b(explain|describe|compare|why|how|details|history|write|build|create|code|essay|steps)\b/i.test(text);
+
+      const directFactPattern =
+        /^(what|where|who|when|which|name|define|capital|population|currency|language|meaning)\b/i;
+
+      return directFactPattern.test(text) && !asksForExplanation;
+    }
+
+    function cleanSimpleFactResponse(_input, responseText) {
+      let answer = String(responseText || "")
+        .replace(/^#+\s*/gm, "")
+        .replace(/^\s*(?:answer\s*:\s*)/i, "")
+        .replace(/^\s*[-*]\s+/, "")
+        .trim();
+
+      // Do not try to reconstruct factual answers in JavaScript. The model may
+      // already have supplied the correct value, and splitting on words such
+      // as “is” can destroy an otherwise correct sentence.
+      answer = answer
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .slice(0, 2)
+        .join(" ")
+        .trim();
+
+      const words = answer.split(/\s+/).filter(Boolean);
+      if (words.length > 40) {
+        answer = `${words.slice(0, 40).join(" ").replace(/[,:;]+$/, "")}.`;
+      }
+
+      return answer;
+    }
+
+    function looksLikeBrokenFactAnswer(input, answer) {
+      const question = String(input || "").trim().toLowerCase();
+      const response = String(answer || "").trim().toLowerCase();
+      if (!response) return true;
+
+      // Catch circular outputs such as:
+      // “The capital of USA is the capital of the United States.”
+      if (/\bthe capital of .+\bis\s+(?:the\s+)?capital of\b/i.test(answer)) return true;
+      if (/\bthe (?:currency|population|language) of .+\bis\s+(?:the\s+)?(?:currency|population|language) of\b/i.test(answer)) return true;
+
+      const normalizedQuestion = question.replace(/[^a-z0-9]+/g, " ").trim();
+      const normalizedResponse = response.replace(/[^a-z0-9]+/g, " ").trim();
+      if (normalizedResponse === normalizedQuestion) return true;
+
+      const words = normalizedResponse.split(/\s+/).filter(Boolean);
+      return words.length < 2;
+    }
+
+    async function askRealAI(input, image) {
+      const simpleFact = !image && isSimpleFactQuestion(input);
+      const directInstruction = simpleFact
+        ? `Answer this simple factual question in exactly one complete sentence. Include the specific requested value. Do not define the subject, restate the question, give background, or produce a circular sentence. Silently verify the answer before sending it.`
+        : "Answer the user's exact question directly. Keep the answer concise unless the task requires detail. Treat the newest message as the main task and never let old context override it.";
+      const promptBody = input || "Describe this image and answer the user's likely question concisely.";
+      const prompt = `${directInstruction}\n\nUser question: ${promptBody}`;
+
+      const model = await getVedModel();
+      const thinkingLevel = chooseThinkingLevel(input, simpleFact);
+      const isCodeRequest = /\b(code|program|script|website|web app|html|css|javascript|python|java|c\+\+|sql|build|create)\b/i.test(input);
+
+      const chat = model.startChat({
+        history: simpleFact ? [] : buildChatHistory(),
+        generationConfig: {
+          thinkingLevel,
+          temperature: simpleFact ? 0.1 : 0.25,
+          topP: simpleFact ? 0.8 : 0.9,
+          maxOutputTokens: simpleFact ? 384 : isCodeRequest ? 16384 : 4096,
+          verbosity: simpleFact ? "low" : isCodeRequest ? "medium" : "low"
+        }
+      });
+
+      const imagePart = image?.dataUrl
+        ? imageDataToPart(image.dataUrl)
+        : null;
+
+      const request = imagePart
+        ? chat.sendMessage([prompt, imagePart])
+        : chat.sendMessage(prompt);
+
+      const result = await withTimeout(request, AI_RESPONSE_TIMEOUT_MS);
+      let responseText = result?.response?.text?.().trim();
+
+      if (!responseText) {
+        throw new Error("The AI returned an empty response.");
+      }
+
+      if (simpleFact) {
+        responseText = cleanSimpleFactResponse(input, responseText);
+
+        // Retry only when the first response is visibly circular or empty.
+        // This improves reliability without making normal answers slower.
+        if (looksLikeBrokenFactAnswer(input, responseText)) {
+          const repairPrompt = `Correct the broken answer below. Return exactly one complete sentence containing the specific factual value requested. Do not repeat or define the question.\n\nQuestion: ${input}\nBroken answer: ${responseText}`;
+          const repairChat = model.startChat({
+            history: [],
+            generationConfig: {
+              thinkingLevel: "low",
+              temperature: 0.05,
+              topP: 0.8,
+              maxOutputTokens: 384,
+              verbosity: "low"
+            }
+          });
+          const repaired = await withTimeout(repairChat.sendMessage(repairPrompt), AI_RESPONSE_TIMEOUT_MS);
+          const repairedText = cleanSimpleFactResponse(input, repaired?.response?.text?.());
+          if (repairedText && !looksLikeBrokenFactAnswer(input, repairedText)) {
+            responseText = repairedText;
+          }
+        }
+      }
+      return { content: responseText };
+    }
+
+    function aiSetupMessage(error) {
+      const code = String(error?.code || "");
+      const message = String(error?.message || "");
+      const combined = `${code} ${message}`;
+
+      if (/CHROME_AI_UNSUPPORTED/i.test(combined)) {
+        return "Chrome built-in AI is not available in this browser. Open this file in Chrome 148 or newer on a supported desktop computer.";
+      }
+      if (/CHROME_AI_UNAVAILABLE|NotSupportedError|unavailable/i.test(combined)) {
+        return "Chrome built-in AI is unavailable on this computer. It requires a supported desktop, enough free storage, and sufficient RAM or graphics memory.";
+      }
+      if (/NotAllowedError|user activation|permission/i.test(combined)) {
+        return "Click the status button at the top, then click Prepare AI once to download and activate Chrome's built-in model.";
+      }
+      if (/AbortError|aborted/i.test(combined)) {
+        return "The Chrome AI response was stopped after two minutes.";
+      }
+      if (/network|download/i.test(combined)) {
+        return "Chrome could not download its built-in AI model. Use an unmetered internet connection and make sure the computer has enough free storage.";
+      }
+      return null;
+    }
+
+    async function generateReply(input, hasImage, image = null) {
+      const text = input.trim();
+      const lower = text.toLowerCase();
+
+      const remembered = memoryAnswer(text);
+      if (remembered) return { content: remembered };
+
+      const mathAnswer = tryMathAnswer(text);
+      if (mathAnswer) return { content: mathAnswer };
+
+      if (
+        /\b(today|current weather|weather today|latest news|stock price|live score|right now)\b/.test(lower)
+      ) {
+        return {
+          content: "I can’t verify live information because live search is not connected."
+        };
+      }
+
+      try {
+        return await askRealAI(text, hasImage ? image : null);
+      } catch (error) {
+        if (error?.name === "TimeoutError") {
+          return {
+            content: "I stopped after two minutes because the response took too long. Try asking for a smaller or simpler version."
+          };
+        }
+
+        console.error("Chrome built-in AI request failed.", error);
+        const setupMessage = aiSetupMessage(error);
+
+        if (/^(hello|hi|hey|good morning|good afternoon|good evening)\b/.test(lower)) {
+          return { content: "Hey! What are you working on?" };
+        }
+
+        return {
+          content: setupMessage ||
+            `I could not use Chrome built-in AI${error?.code ? ` (${error.code})` : ""}. Open the browser console for the exact error.`
+        };
+      }
+    }
+
+    async function sendMessage() {
+      const content = elements.messageInput.value.trim();
+
+      if ((!content && !pendingImage) || isReplying || !currentUser) {
+        return;
+      }
+
+      const image = pendingImage;
+      const hasImage = Boolean(image);
+
+      isReplying = true;
+      updateComposer();
+
+      // Start Chrome AI immediately while this click still counts as user activation.
+      if (hasChromePromptAPI() && chromeAIAvailability !== "available") {
+        prepareChromeAI().catch(error => console.warn("Chrome AI warm-up did not complete yet.", error));
+      }
+
+      await appendMessage("user", content, {
+        ...(image
+          ? {
+              imageData: image.dataUrl,
+              imageName: image.name
+            }
+          : {})
+      });
+
+      elements.messageInput.value = "";
+      clearPendingImage();
+      autoResizeInput();
+      showTyping();
+
+      try {
+        const reply = await generateReply(content, hasImage, image);
+        hideTyping();
+
+        await appendMessage("ai", reply.content, {
+          ...(reply.sourceUrl ? { sourceUrl: reply.sourceUrl } : {})
+        });
+      } catch {
+        hideTyping();
+
+        await appendMessage(
+          "ai",
+          "I could not complete that response. Please check your internet connection and try again."
+        );
+      } finally {
+        isReplying = false;
+        updateComposer();
+        elements.messageInput.focus();
+      }
+    }
+
+    function updateComposer() {
+      const hasContent =
+        Boolean(elements.messageInput.value.trim()) ||
+        Boolean(pendingImage);
+
+      elements.sendButton.disabled = !hasContent || isReplying || !currentUser;
+      elements.attachButton.disabled = isReplying || !currentUser;
+    }
+
+    function autoResizeInput() {
+      elements.messageInput.style.height = "auto";
+      elements.messageInput.style.height =
+        `${Math.min(elements.messageInput.scrollHeight, 180)}px`;
+    }
+
+    function scrollToBottom() {
+      elements.messagesWrap.scrollTop = elements.messagesWrap.scrollHeight;
+    }
+
+    function formatDate(timestamp) {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const difference = now - date;
+
+      if (difference < 60_000) {
+        return "Just now";
+      }
+
+      if (difference < 3_600_000) {
+        return `${Math.floor(difference / 60_000)} min ago`;
+      }
+
+      if (date.toDateString() === now.toDateString()) {
+        return date.toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit"
+        });
+      }
+
+      return date.toLocaleDateString([], {
+        month: "short",
+        day: "numeric"
+      });
+    }
+
+    function openSidebar() {
+      elements.sidebar.classList.add("open");
+      elements.sidebarOverlay.classList.add("show");
+    }
+
+    function closeSidebar() {
+      elements.sidebar.classList.remove("open");
+      elements.sidebarOverlay.classList.remove("show");
+    }
+
+    function showToast(message) {
+      clearTimeout(toastTimer);
+      elements.toast.textContent = message;
+      elements.toast.classList.add("show");
+
+      toastTimer = setTimeout(() => {
+        elements.toast.classList.remove("show");
+      }, 4200);
+    }
+
+    function openLightbox(source) {
+      elements.lightboxImage.src = source;
+      elements.lightbox.classList.add("show");
+    }
+
+    function clearPendingImage() {
+      pendingImage = null;
+      elements.imageInput.value = "";
+      renderImagePreview();
+      updateComposer();
+    }
+
+    function renderImagePreview() {
+      if (!pendingImage) {
+        elements.imagePreviewWrap.classList.add("hidden");
+        elements.imagePreview.removeAttribute("src");
+        return;
+      }
+
+      elements.imagePreview.src = pendingImage.dataUrl;
+      elements.imagePreviewName.textContent = pendingImage.name;
+      elements.imagePreviewSize.textContent =
+        `${Math.round(pendingImage.bytes / 1024)} KB after compression`;
+      elements.imagePreviewWrap.classList.remove("hidden");
+    }
+
+    async function compressImage(file) {
+      if (!file.type.startsWith("image/")) {
+        throw new Error("Choose a valid image file.");
+      }
+
+      if (file.size > 12 * 1024 * 1024) {
+        throw new Error("Choose an image smaller than 12 MB.");
+      }
+
+      const originalDataUrl = await readFileAsDataUrl(file);
+      const image = await loadImage(originalDataUrl);
+
+      const maxDimension = 960;
+      const scale = Math.min(
+        1,
+        maxDimension / Math.max(image.naturalWidth, image.naturalHeight)
+      );
+
+      const width = Math.max(1, Math.round(image.naturalWidth * scale));
+      const height = Math.max(1, Math.round(image.naturalHeight * scale));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+
+      const context = canvas.getContext("2d", { alpha: false });
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, width, height);
+      context.drawImage(image, 0, 0, width, height);
+
+      let quality = 0.78;
+      let dataUrl = canvas.toDataURL("image/jpeg", quality);
+
+      while (dataUrl.length > 650_000 && quality > 0.42) {
+        quality -= 0.08;
+        dataUrl = canvas.toDataURL("image/jpeg", quality);
+      }
+
+      if (dataUrl.length > 750_000) {
+        throw new Error("The compressed image is still too large. Choose a smaller image.");
+      }
+
+      return {
+        name: file.name.replace(/\.[^.]+$/, "") + ".jpg",
+        dataUrl,
+        bytes: Math.round((dataUrl.length * 3) / 4)
+      };
+    }
+
+    function readFileAsDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error("The image could not be read."));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function loadImage(source) {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error("The selected image is not supported."));
+        image.src = source;
+      });
+    }
+
+    elements.sendButton.addEventListener("click", sendMessage);
+    elements.newChatButton.addEventListener("click", createConversation);
+    elements.menuButton.addEventListener("click", openSidebar);
+    elements.sidebarOverlay.addEventListener("click", closeSidebar);
+
+    elements.messageInput.addEventListener("input", () => {
+      autoResizeInput();
+      updateComposer();
+    });
+
+    elements.messageInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+      }
+    });
+
+    elements.attachButton.addEventListener("click", () => {
+      elements.imageInput.click();
+    });
+
+    elements.imageInput.addEventListener("change", async () => {
+      const file = elements.imageInput.files?.[0];
+
+      if (!file) {
+        return;
+      }
+
+      elements.attachButton.disabled = true;
+
+      try {
+        pendingImage = await compressImage(file);
+        renderImagePreview();
+      } catch (error) {
+        clearPendingImage();
+        showToast(error?.message || "The image could not be attached.");
+      } finally {
+        updateComposer();
+      }
+    });
+
+    elements.removeImageButton.addEventListener("click", clearPendingImage);
+
+    elements.lightbox.addEventListener("click", () => {
+      elements.lightbox.classList.remove("show");
+      elements.lightboxImage.removeAttribute("src");
+    });
+
+    window.addEventListener("resize", () => {
+      if (window.innerWidth > 780) {
+        closeSidebar();
+      }
+    });
+  </script>
+</body>
+</html>
