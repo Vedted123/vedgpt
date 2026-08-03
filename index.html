@@ -1681,6 +1681,11 @@
 
     const firebaseApp = initializeApp(firebaseConfig);
 
+    // Paste the PUBLIC reCAPTCHA Enterprise website site key here after
+    // registering this web app in Firebase Console > App Check.
+    // This is a public browser key, not a secret API key.
+    const APP_CHECK_RECAPTCHA_ENTERPRISE_SITE_KEY = "";
+
     const isLocalDevelopment =
       location.hostname === "localhost" || location.hostname === "127.0.0.1";
 
@@ -1695,25 +1700,29 @@
       if (vedModelPromise) return vedModelPromise;
 
       vedModelPromise = (async () => {
-        // AI and App Check load only when the user sends a message. A problem
-        // with either service can no longer break login or account creation.
+        // AI and App Check load only when the user sends a message.
+        // Authentication and chat storage continue working if AI setup fails.
         if (isLocalDevelopment) {
+          // Firebase prints a debug token in DevTools. Register that token under
+          // Firebase Console > App Check > Apps > Manage debug tokens.
           self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
         }
 
-        try {
-          const appCheckModule = await import(
+        if (APP_CHECK_RECAPTCHA_ENTERPRISE_SITE_KEY) {
+          const { initializeAppCheck, ReCaptchaEnterpriseProvider } = await import(
             "https://www.gstatic.com/firebasejs/12.16.0/firebase-app-check.js"
           );
 
-          // Debug mode on localhost can use the Firebase-generated debug token.
-          // On a hosted production site, configure a production App Check
-          // provider in Firebase Console. App Check errors must not affect Auth.
-          appCheckModule.initializeAppCheck(firebaseApp, {
+          initializeAppCheck(firebaseApp, {
+            provider: new ReCaptchaEnterpriseProvider(
+              APP_CHECK_RECAPTCHA_ENTERPRISE_SITE_KEY
+            ),
             isTokenAutoRefreshEnabled: true
           });
-        } catch (error) {
-          console.warn("Firebase App Check was not initialized.", error);
+        } else {
+          console.warn(
+            "App Check site key is blank. AI requests work only if Firebase AI Logic App Check enforcement is Unenforced."
+          );
         }
 
         const { getAI, getGenerativeModel, GoogleAIBackend } = await import(
@@ -3679,7 +3688,7 @@ Include the programming language and the exact behavior you want for a more spec
       if (/app check|403|permission.?denied|unauthenticated/i.test(combined)) {
         return isLocalDevelopment
           ? "Firebase AI Logic was rejected by App Check. Open DevTools, copy the App Check debug token, and register it in Firebase Console → App Check → Apps → Manage debug tokens."
-          : "Firebase AI Logic was rejected by App Check. Register this web app with reCAPTCHA Enterprise in Firebase App Check, then re-copy the Firebase web configuration or paste its public site key into APP_CHECK_RECAPTCHA_ENTERPRISE_SITE_KEY.";
+          : "Firebase AI Logic was rejected by App Check. In Firebase Console, either set Security → App Check → APIs → Firebase AI Logic to Unenforced for testing, or register this web app with reCAPTCHA Enterprise and paste the public website site key into APP_CHECK_RECAPTCHA_ENTERPRISE_SITE_KEY near the Firebase configuration.";
       }
 
       if (/firebase ai logic|generative language|api key|not enabled|not found|model/i.test(combined)) {
